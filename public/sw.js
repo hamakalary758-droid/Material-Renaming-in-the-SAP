@@ -1,4 +1,4 @@
-const CACHE_NAME = "qs-planner-v3";
+const CACHE_NAME = "qs-planner-v12";
 const ASSETS = [
   "./",
   "index.html",
@@ -12,7 +12,12 @@ const ASSETS = [
   "items/nut.js",
   "items/screw.js",
   "items/sandpaper.js",
-  "items/hosejoint.js"
+  "items/hosejoint.js",
+  "items/pipe.js",
+  "items/bearing.js",
+  "items/elbow.js",
+  "items/tee.js",
+  "items/reducer.js"
 ];
 
 self.addEventListener("install", function (event) {
