@@ -36,10 +36,10 @@ window.QS_MODULES.push({
 
   /* Easy-to-edit material colors for the drawing */
   materialColors: {
-    "MS": { fill: "#6B7280", shade: "#4B5563", stroke: "#1F2937", detail: "#374151", dot: "#5B6472", shine: false },
-    "CS": { fill: "#525C68", shade: "#363F4A", stroke: "#111827", detail: "#1F2937", dot: "#414A54", shine: false },
-    "SS": { fill: "#E8EEF4", shade: "#CBD5E1", stroke: "#475569", detail: "#64748B", dot: "#DCE5EE", shine: true },
-    "GI": { fill: "#F1F5F9", shade: "#DCE4EC", stroke: "#64748B", detail: "#94A3B8", dot: "#E5ECF3", shine: false }
+    "MS": { c1: "#A3ACB8", c2: "#6B7280", c3: "#3F4651", cs: "#1F2937" },
+    "CS": { c1: "#7F8A97", c2: "#525C68", c3: "#2B333D", cs: "#111827" },
+    "SS": { c1: "#FFFFFF", c2: "#D5DCE4", c3: "#7D8896", cs: "#5A6572" },
+    "GI": { c1: "#F8FAFC", c2: "#DCE4EC", c3: "#94A3B8", cs: "#64748B" }
   },
 
   /* Easy-to-edit plain-word meanings for Long text */
@@ -240,7 +240,7 @@ window.QS_MODULES.push({
     return missing;
   },
 
-  /* Build crisp side-view + end-view SVG drawing with material colors & option labels */
+  /* Build crisp side-view + end-view SVG drawing with 3D shading & compressed size scaling */
   buildDrawingSvg: function (values, shortNameText) {
     const mod = this;
     const clean = function (v) {
@@ -255,6 +255,12 @@ window.QS_MODULES.push({
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    };
+    const f2 = function (n) {
+      return Number(n.toFixed(2));
+    };
+    const clamp = function (v, lo, hi) {
+      return Math.max(lo, Math.min(hi, v));
     };
     const resolveChoice = function (choice, otherVal) {
       if (choice === "__OTHER__") return upper(otherVal);
@@ -303,25 +309,46 @@ window.QS_MODULES.push({
     const sqHeight = upper(values.sqHeight);
     const sqThk = upper(values.sqThk);
 
-    const hasMat = Boolean(material);
-    const matPalette = (material && mod.materialColors && mod.materialColors[material]) ? mod.materialColors[material] : null;
-    const useShine = Boolean(matPalette && matPalette.shine);
-    const fillColor = matPalette
-      ? (useShine ? "url(#pipe-ss-grad)" : matPalette.fill)
-      : (hasMat ? "#D5DCE3" : "#EEF2F6");
-    const shadeColor = matPalette ? matPalette.shade : (hasMat ? "#BCC7D2" : "#E2E8F0");
-    const strokeColor = matPalette ? matPalette.stroke : (hasMat ? "#475569" : "#94A3B8");
-    const detailColor = matPalette ? matPalette.detail : (hasMat ? "#64748B" : "#94A3B8");
-    const dotColor = matPalette ? matPalette.dot : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    /* Palette (c1 light, c2 mid, c3 dark, cs outline) */
+    const defaultPal = { c1: "#F1F5F9", c2: "#D5DCE3", c3: "#94A3B8", cs: "#64748B" };
+    const pal = (material && mod.materialColors && mod.materialColors[material])
+      ? mod.materialColors[material]
+      : defaultPal;
+    const c1 = pal.c1;
+    const c2 = pal.c2;
+    const c3 = pal.c3;
+    const cs = pal.cs;
 
-    const defsSvg = useShine
-      ? '<defs><linearGradient id="pipe-ss-grad" x1="0%" y1="0%" x2="0%" y2="100%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="35%" stop-color="#FFFFFF" />' +
-          '<stop offset="70%" stop-color="#CBD5E1" />' +
-          '<stop offset="100%" stop-color="#F1F5F9" />' +
-        '</linearGradient></defs>'
-      : "";
+    /* Unique gradient ID prefix per drawing */
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "pipe-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
+    const gCyl = uid + "-cyl";
+    const gEnd = uid + "-end";
+    const gSqTop = uid + "-sqt";
+    const gSqFront = uid + "-sqf";
+
+    const defsSvg =
+      "<defs>" +
+        '<linearGradient id="' + gCyl + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="' + c3 + '" />' +
+          '<stop offset="25%" stop-color="' + c1 + '" />' +
+          '<stop offset="50%" stop-color="' + c2 + '" />' +
+          '<stop offset="100%" stop-color="' + c3 + '" />' +
+        "</linearGradient>" +
+        '<linearGradient id="' + gEnd + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="' + c1 + '" />' +
+          '<stop offset="55%" stop-color="' + c2 + '" />' +
+          '<stop offset="100%" stop-color="' + c3 + '" />' +
+        "</linearGradient>" +
+        '<linearGradient id="' + gSqTop + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="' + c1 + '" />' +
+          '<stop offset="100%" stop-color="' + c2 + '" />' +
+        "</linearGradient>" +
+        '<linearGradient id="' + gSqFront + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="' + c2 + '" />' +
+          '<stop offset="100%" stop-color="' + c3 + '" />' +
+        "</linearGradient>" +
+      "</defs>";
 
     const topText = clean(shortNameText);
     const topLines = topText ? wrapLines(topText, 36) : ["NEW PIPE"];
@@ -334,7 +361,7 @@ window.QS_MODULES.push({
       return (
         '<text x="190" y="' + y + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + color + '">' +
           esc(line) +
-        '</text>'
+        "</text>"
       );
     }).join("");
 
@@ -342,53 +369,113 @@ window.QS_MODULES.push({
     const optColor = "#0F3B33";
     const missingColor = "#64748B";
     const yOffset = topShift;
-    const cy = 128 + yOffset;
+    const cy = 118 + yOffset;
     const sx1 = 62;
-    const sx2 = 226;
-    const halfH = 34;
-    const wallT = 9;
+    const sx2 = 216;
     const ex = 304;
+
+    const INCH_OD_MM = {
+      "1/2": 21.3, "3/4": 26.7, "1": 33.4, "1.1/4": 42.2, "1.1/2": 48.3,
+      "2": 60.3, "2.1/2": 73.0, "3": 88.9, "4": 114.3, "5": 141.3,
+      "6": 168.3, "8": 219.1, "10": 273.1, "12": 323.9, "14": 355.6,
+      "16": 406.4, "18": 457.2, "20": 508.0, "24": 609.6
+    };
+    const SCH_FACTORS = {
+      "SCH10": 0.04, "SCH20": 0.05, "SCH30": 0.06, "SCH40": 0.07,
+      "SCH60": 0.09, "SCH80": 0.11, "SCH120": 0.14, "SCH160": 0.17
+    };
 
     let shapeSvg = "";
     let labelsSvg = "";
+    let halfH = 25;
 
     if (shape === "Square") {
-      /* Side view of square hollow pipe + right-side square end view showing wall thickness */
+      const wParsed = parseFloat(sqWidth);
+      const hParsed = parseFloat(sqHeight);
+      const tParsed = parseFloat(sqThk);
+      const wMm = (sqWidth && !isNaN(wParsed) && wParsed > 0) ? wParsed : 60;
+      const hMm = (sqHeight && !isNaN(hParsed) && hParsed > 0) ? hParsed : 60;
+      const tMm = (sqThk && !isNaN(tParsed) && tParsed > 0) ? tParsed : 4;
+
+      const maxSideMm = Math.max(wMm, hMm);
+      const minSideMm = Math.min(wMm, hMm);
+      const maxSidePx = 28 + 84 * Math.sqrt(clamp((maxSideMm - 20) / 380, 0, 1));
+      const wPx = maxSidePx * (wMm / maxSideMm);
+      const hPx = maxSidePx * (hMm / maxSideMm);
+      const minSidePx = Math.min(wPx, hPx);
+
+      const wallRatio = clamp(tMm / maxSideMm, 0.02, 0.25);
+      const wallPx = Math.min(minSidePx * 0.30, Math.max(2.5, maxSidePx * wallRatio));
+
+      halfH = hPx / 2;
+      const halfWEnd = wPx / 2;
+      const yTop = cy - halfH;
+      const yBot = cy + halfH;
+      const topFaceH = Math.max(3, Math.min(12, hPx * 0.24));
+
       shapeSvg =
-        '<rect x="' + sx1 + '" y="' + (cy - halfH) + '" width="' + (sx2 - sx1) + '" height="' + (halfH * 2) + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="miter" />' +
-        '<line x1="' + sx1 + '" y1="' + (cy - halfH + wallT) + '" x2="' + sx2 + '" y2="' + (cy - halfH + wallT) + '" stroke="' + detailColor + '" stroke-width="1" stroke-dasharray="4 3" />' +
-        '<line x1="' + sx1 + '" y1="' + (cy + halfH - wallT) + '" x2="' + sx2 + '" y2="' + (cy + halfH - wallT) + '" stroke="' + detailColor + '" stroke-width="1" stroke-dasharray="4 3" />' +
-        '<text x="' + ex + '" y="' + (cy - halfH - 12) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#476B62">End view</text>' +
-        '<rect x="' + (ex - halfH) + '" y="' + (cy - halfH) + '" width="' + (halfH * 2) + '" height="' + (halfH * 2) + '" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="miter" />' +
-        '<rect x="' + (ex - halfH + wallT) + '" y="' + (cy - halfH + wallT) + '" width="' + ((halfH - wallT) * 2) + '" height="' + ((halfH - wallT) * 2) + '" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="1.1" stroke-linejoin="miter" />';
+        '<rect x="' + sx1 + '" y="' + f2(yTop) + '" width="' + (sx2 - sx1) + '" height="' + f2(topFaceH) + '" fill="url(#' + gSqTop + ')" stroke="' + cs + '" stroke-width="1.05" />' +
+        '<rect x="' + sx1 + '" y="' + f2(yTop + topFaceH) + '" width="' + (sx2 - sx1) + '" height="' + f2(hPx - topFaceH) + '" fill="url(#' + gSqFront + ')" stroke="' + cs + '" stroke-width="1.05" />' +
+        '<line x1="' + sx1 + '" y1="' + f2(yTop + wallPx) + '" x2="' + sx2 + '" y2="' + f2(yTop + wallPx) + '" stroke="' + c3 + '" stroke-width="1" stroke-dasharray="4 3" />' +
+        '<line x1="' + sx1 + '" y1="' + f2(yBot - wallPx) + '" x2="' + sx2 + '" y2="' + f2(yBot - wallPx) + '" stroke="' + c3 + '" stroke-width="1" stroke-dasharray="4 3" />' +
+        '<text x="' + ex + '" y="' + f2(yTop - 12) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#476B62">End view</text>' +
+        '<rect x="' + f2(ex - halfWEnd) + '" y="' + f2(yTop) + '" width="' + f2(wPx) + '" height="' + f2(hPx) + '" fill="url(#' + gEnd + ')" stroke="' + cs + '" stroke-width="1.15" />' +
+        '<rect x="' + f2(ex - halfWEnd + wallPx) + '" y="' + f2(yTop + wallPx) + '" width="' + f2(Math.max(2, wPx - wallPx * 2)) + '" height="' + f2(Math.max(2, hPx - wallPx * 2)) + '" fill="#FFFFFF" stroke="' + cs + '" stroke-width="1.05" />';
 
       const whLabel = "Width x Height: " + (sqWidth || "?") + " x " + (sqHeight || "?") + ((sqWidth || sqHeight) ? " mm" : "");
       const whOk = Boolean(sqWidth && sqHeight);
       const thkLabel = sqThk ? ("Thickness: " + sqThk + " mm") : "Thickness: ?";
 
       labelsSvg =
-        '<line x1="42" y1="' + (cy - halfH) + '" x2="' + (sx1 - 4) + '" y2="' + (cy - halfH) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2" />' +
-        '<line x1="42" y1="' + (cy + halfH) + '" x2="' + (sx1 - 4) + '" y2="' + (cy + halfH) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2" />' +
-        '<line x1="48" y1="' + (cy - halfH + 3) + '" x2="48" y2="' + (cy + halfH - 3) + '" stroke="' + (whOk ? reqColor : missingColor) + '" stroke-width="1" />' +
-        '<polygon points="48,' + (cy - halfH) + ' 45,' + (cy - halfH + 6) + ' 51,' + (cy - halfH + 6) + '" fill="' + (whOk ? reqColor : missingColor) + '" />' +
-        '<polygon points="48,' + (cy + halfH) + ' 45,' + (cy + halfH - 6) + ' 51,' + (cy + halfH - 6) + '" fill="' + (whOk ? reqColor : missingColor) + '" />' +
-        '<text x="' + Math.round((sx1 + sx2) / 2) + '" y="' + (cy - halfH - 12) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (whOk ? reqColor : missingColor) + '">' + esc(whLabel) + '</text>' +
-        '<polyline points="' + (ex + halfH - 4) + ',' + (cy - halfH + 4) + ' ' + (ex + halfH + 6) + ',' + (cy - halfH - 16) + '" fill="none" stroke="' + (sqThk ? reqColor : missingColor) + '" stroke-width="1" />' +
-        '<circle cx="' + (ex + halfH - 4) + '" cy="' + (cy - halfH + 4) + '" r="2" fill="' + (sqThk ? reqColor : missingColor) + '" />' +
-        '<text x="' + ex + '" y="' + (cy + halfH + 18) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (sqThk ? reqColor : missingColor) + '">' + esc(thkLabel) + '</text>';
+        '<line x1="42" y1="' + f2(yTop) + '" x2="' + (sx1 - 4) + '" y2="' + f2(yTop) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2" />' +
+        '<line x1="42" y1="' + f2(yBot) + '" x2="' + (sx1 - 4) + '" y2="' + f2(yBot) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2" />' +
+        '<line x1="48" y1="' + f2(yTop + 3) + '" x2="48" y2="' + f2(yBot - 3) + '" stroke="' + (whOk ? reqColor : missingColor) + '" stroke-width="1" />' +
+        '<polygon points="48,' + f2(yTop) + " 45," + f2(yTop + 6) + " 51," + f2(yTop + 6) + '" fill="' + (whOk ? reqColor : missingColor) + '" />' +
+        '<polygon points="48,' + f2(yBot) + " 45," + f2(yBot - 6) + " 51," + f2(yBot - 6) + '" fill="' + (whOk ? reqColor : missingColor) + '" />' +
+        '<text x="' + Math.round((sx1 + sx2) / 2) + '" y="' + f2(yTop - 12) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (whOk ? reqColor : missingColor) + '">' + esc(whLabel) + "</text>" +
+        '<polyline points="' + f2(ex + halfWEnd - wallPx * 0.5) + "," + f2(yTop + wallPx * 0.5) + " " + f2(ex + halfWEnd + 6) + "," + f2(yTop - 14) + '" fill="none" stroke="' + (sqThk ? reqColor : missingColor) + '" stroke-width="1" />' +
+        '<circle cx="' + f2(ex + halfWEnd - wallPx * 0.5) + '" cy="' + f2(yTop + wallPx * 0.5) + '" r="2" fill="' + (sqThk ? reqColor : missingColor) + '" />' +
+        '<text x="' + ex + '" y="' + f2(yBot + 18) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (sqThk ? reqColor : missingColor) + '">' + esc(thkLabel) + "</text>";
     } else {
-      /* Round pipe side view with chamfer/wall lines + circular end view showing wall thickness */
-      const shineSvg = useShine
-        ? '<line x1="' + (sx1 + 6) + '" y1="' + (cy - halfH + 14) + '" x2="' + (sx2 - 6) + '" y2="' + (cy - halfH + 14) + '" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.85" />'
-        : "";
+      /* Round pipe */
+      let odMm = 60.3;
+      if (sizeSystem === "mm") {
+        const odParsed = parseFloat(mmOd);
+        if (mmOd && !isNaN(odParsed) && odParsed > 0) odMm = odParsed;
+      } else {
+        odMm = INCH_OD_MM[inchRaw] || 60.3;
+      }
+
+      const Dpx = 28 + 84 * Math.sqrt(clamp((odMm - 21) / 589, 0, 1));
+      let wallPx = Math.max(2.5, Dpx * 0.07);
+      if (sizeSystem === "mm") {
+        const thkParsed = parseFloat(mmThk);
+        if (mmThk && !isNaN(thkParsed) && thkParsed > 0) {
+          const ratio = clamp(thkParsed / odMm, 0.02, 0.25);
+          wallPx = Math.max(2.5, Dpx * ratio);
+        }
+      } else {
+        const schFactor = SCH_FACTORS[schDisplay] || 0.07;
+        wallPx = Math.max(2.5, Dpx * schFactor);
+      }
+      wallPx = Math.min(wallPx, Dpx * 0.42);
+
+      halfH = Dpx / 2;
+      const yTop = cy - halfH;
+      const yBot = cy + halfH;
+      const innerR = Math.max(2, halfH - wallPx);
+      const hlY = yTop + Dpx * 0.22;
+
       shapeSvg =
-        '<rect x="' + sx1 + '" y="' + (cy - halfH) + '" width="' + (sx2 - sx1) + '" height="' + (halfH * 2) + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="miter" />' +
-        shineSvg +
-        '<line x1="' + sx1 + '" y1="' + (cy - halfH + wallT) + '" x2="' + sx2 + '" y2="' + (cy - halfH + wallT) + '" stroke="' + detailColor + '" stroke-width="1" stroke-dasharray="4 3" />' +
-        '<line x1="' + sx1 + '" y1="' + (cy + halfH - wallT) + '" x2="' + sx2 + '" y2="' + (cy + halfH - wallT) + '" stroke="' + detailColor + '" stroke-width="1" stroke-dasharray="4 3" />' +
-        '<text x="' + ex + '" y="' + (cy - halfH - 12) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#476B62">End view</text>' +
-        '<circle cx="' + ex + '" cy="' + cy + '" r="' + halfH + '" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1.2" />' +
-        '<circle cx="' + ex + '" cy="' + cy + '" r="' + (halfH - wallT) + '" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="1.1" />';
+        '<rect x="' + sx1 + '" y="' + f2(yTop) + '" width="' + (sx2 - sx1) + '" height="' + f2(Dpx) + '" fill="url(#' + gCyl + ')" stroke="' + cs + '" stroke-width="1.15" />' +
+        '<line x1="' + (sx1 + 4) + '" y1="' + f2(hlY) + '" x2="' + (sx2 - 4) + '" y2="' + f2(hlY) + '" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.5" />' +
+        '<line x1="' + sx1 + '" y1="' + f2(yTop + wallPx) + '" x2="' + sx2 + '" y2="' + f2(yTop + wallPx) + '" stroke="' + c3 + '" stroke-width="1" stroke-dasharray="4 3" />' +
+        '<line x1="' + sx1 + '" y1="' + f2(yBot - wallPx) + '" x2="' + sx2 + '" y2="' + f2(yBot - wallPx) + '" stroke="' + c3 + '" stroke-width="1" stroke-dasharray="4 3" />' +
+        '<line x1="' + (sx1 + 3) + '" y1="' + f2(yTop) + '" x2="' + sx1 + '" y2="' + f2(yTop + wallPx) + '" stroke="' + cs + '" stroke-width="0.9" />' +
+        '<line x1="' + (sx2 - 3) + '" y1="' + f2(yTop) + '" x2="' + sx2 + '" y2="' + f2(yTop + wallPx) + '" stroke="' + cs + '" stroke-width="0.9" />' +
+        '<text x="' + ex + '" y="' + f2(yTop - 12) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#476B62">End view</text>' +
+        '<circle cx="' + ex + '" cy="' + cy + '" r="' + f2(halfH) + '" fill="url(#' + gEnd + ')" stroke="' + cs + '" stroke-width="1.15" />' +
+        '<circle cx="' + ex + '" cy="' + cy + '" r="' + f2(innerR) + '" fill="#FFFFFF" stroke="' + cs + '" stroke-width="1.05" />';
 
       const primaryDimLabel = sizeSystem === "mm"
         ? (mmOd ? ("OD: " + mmOd + " mm") : "OD: ?")
@@ -401,19 +488,23 @@ window.QS_MODULES.push({
       const wallOk = sizeSystem === "mm" ? Boolean(mmThk) : Boolean(schDisplay);
 
       labelsSvg =
-        '<line x1="42" y1="' + (cy - halfH) + '" x2="' + (sx1 - 4) + '" y2="' + (cy - halfH) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2" />' +
-        '<line x1="42" y1="' + (cy + halfH) + '" x2="' + (sx1 - 4) + '" y2="' + (cy + halfH) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2" />' +
-        '<line x1="48" y1="' + (cy - halfH + 3) + '" x2="48" y2="' + (cy + halfH - 3) + '" stroke="' + (primaryOk ? reqColor : missingColor) + '" stroke-width="1" />' +
-        '<polygon points="48,' + (cy - halfH) + ' 45,' + (cy - halfH + 6) + ' 51,' + (cy - halfH + 6) + '" fill="' + (primaryOk ? reqColor : missingColor) + '" />' +
-        '<polygon points="48,' + (cy + halfH) + ' 45,' + (cy + halfH - 6) + ' 51,' + (cy + halfH - 6) + '" fill="' + (primaryOk ? reqColor : missingColor) + '" />' +
-        '<text x="' + Math.round((sx1 + sx2) / 2) + '" y="' + (cy - halfH - 12) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (primaryOk ? reqColor : missingColor) + '">' + esc(primaryDimLabel) + '</text>' +
-        '<line x1="' + ex + '" y1="' + (cy + halfH - Math.round(wallT / 2)) + '" x2="' + ex + '" y2="' + (cy + halfH + 8) + '" stroke="' + (wallOk ? reqColor : missingColor) + '" stroke-width="1" />' +
-        '<circle cx="' + ex + '" cy="' + (cy + halfH - Math.round(wallT / 2)) + '" r="2" fill="' + (wallOk ? reqColor : missingColor) + '" />' +
-        '<text x="' + ex + '" y="' + (cy + halfH + 20) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (wallOk ? reqColor : missingColor) + '">' + esc(wallLabel) + '</text>';
+        '<line x1="42" y1="' + f2(yTop) + '" x2="' + (sx1 - 4) + '" y2="' + f2(yTop) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2" />' +
+        '<line x1="42" y1="' + f2(yBot) + '" x2="' + (sx1 - 4) + '" y2="' + f2(yBot) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 2" />' +
+        '<line x1="48" y1="' + f2(yTop + 3) + '" x2="48" y2="' + f2(yBot - 3) + '" stroke="' + (primaryOk ? reqColor : missingColor) + '" stroke-width="1" />' +
+        '<polygon points="48,' + f2(yTop) + " 45," + f2(yTop + 6) + " 51," + f2(yTop + 6) + '" fill="' + (primaryOk ? reqColor : missingColor) + '" />' +
+        '<polygon points="48,' + f2(yBot) + " 45," + f2(yBot - 6) + " 51," + f2(yBot - 6) + '" fill="' + (primaryOk ? reqColor : missingColor) + '" />' +
+        '<text x="' + Math.round((sx1 + sx2) / 2) + '" y="' + f2(yTop - 12) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (primaryOk ? reqColor : missingColor) + '">' + esc(primaryDimLabel) + "</text>" +
+        '<line x1="' + ex + '" y1="' + f2(yBot - wallPx * 0.5) + '" x2="' + ex + '" y2="' + f2(yBot + 7) + '" stroke="' + (wallOk ? reqColor : missingColor) + '" stroke-width="1" />' +
+        '<circle cx="' + ex + '" cy="' + f2(yBot - wallPx * 0.5) + '" r="2" fill="' + (wallOk ? reqColor : missingColor) + '" />' +
+        '<text x="' + ex + '" y="' + f2(yBot + 19) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (wallOk ? reqColor : missingColor) + '">' + esc(wallLabel) + "</text>";
     }
 
+    const noteY = cy + halfH + 34;
+    const relNoteSvg =
+      '<text x="366" y="' + f2(noteY) + '" text-anchor="end" font-size="9.5" font-weight="600" fill="#64748B">Size drawn relative, not to true scale</text>';
+
     /* Info lines below drawing showing all selected options */
-    const infoStartY = cy + halfH + 46;
+    const infoStartY = noteY + 22;
     const matLabel = material ? ("Material: " + material) : "Material: ?";
     const matCol = material ? reqColor : missingColor;
 
@@ -425,14 +516,14 @@ window.QS_MODULES.push({
     const specsLines = wrapLines(specsParts.join("  |  "), 46);
 
     const infoSvg =
-      '<circle cx="132" cy="' + (infoStartY - 4) + '" r="5" fill="' + dotColor + '" stroke="' + strokeColor + '" stroke-width="1" />' +
-      '<text x="142" y="' + infoStartY + '" text-anchor="start" font-size="12" font-weight="700" fill="' + matCol + '">' + esc(matLabel) + '</text>' +
+      '<circle cx="132" cy="' + f2(infoStartY - 4) + '" r="5" fill="' + c2 + '" stroke="' + cs + '" stroke-width="1" />' +
+      '<text x="142" y="' + f2(infoStartY) + '" text-anchor="start" font-size="12" font-weight="700" fill="' + matCol + '">' + esc(matLabel) + "</text>" +
       specsLines.map(function (line, i) {
         const y = infoStartY + 18 + i * 16;
-        return '<text x="190" y="' + y + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + optColor + '">' + esc(line) + '</text>';
+        return '<text x="190" y="' + f2(y) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + optColor + '">' + esc(line) + "</text>";
       }).join("");
 
-    const totalHeight = infoStartY + 18 + specsLines.length * 16 + 12;
+    const totalHeight = Math.round(infoStartY + 18 + specsLines.length * 16 + 12);
 
     return (
       '<svg viewBox="0 0 380 ' + totalHeight + '" shape-rendering="geometricPrecision" role="img" aria-label="Pipe technical drawing">' +
@@ -441,10 +532,11 @@ window.QS_MODULES.push({
         topSvg +
         '<g class="bolt-shape-animate">' +
           shapeSvg +
-        '</g>' +
+        "</g>" +
         labelsSvg +
+        relNoteSvg +
         infoSvg +
-      '</svg>'
+      "</svg>"
     );
   },
 

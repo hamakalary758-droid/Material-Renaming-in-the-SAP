@@ -28,11 +28,11 @@ window.QS_MODULES.push({
 
   /* Easy-to-edit material colors for the drawing (NYLOC ring stays dark blue) */
   materialColors: {
-    "MS": { fill: "#8D99A6", shade: "#6E7B88", stroke: "#334155", thread: "#475569", dot: "#7A8694", shine: false },
-    "SS": { fill: "#E8EEF4", shade: "#CBD5E1", stroke: "#475569", thread: "#64748B", dot: "#DCE5EE", shine: true },
-    "GI": { fill: "#F3D26A", shade: "#D9AC36", stroke: "#7C5E10", thread: "#9A7618", dot: "#EAB308", shine: false },
-    "HT": { fill: "#454C56", shade: "#2D323B", stroke: "#111827", thread: "#1F2937", dot: "#2B3038", shine: false },
-    "COPPER": { fill: "#E08A54", shade: "#C06533", stroke: "#6E3213", thread: "#8A421D", dot: "#D97742", shine: false }
+    "MS": { c1: "#E3E8ED", c2: "#A9B4BF", c3: "#5E6B78", cs: "#3B4856" },
+    "GI": { c1: "#F6E7A6", c2: "#D8B94E", c3: "#8C7420", cs: "#6B5A18" },
+    "SS": { c1: "#FFFFFF", c2: "#D5DCE4", c3: "#7D8896", cs: "#5A6572" },
+    "HT": { c1: "#7B8794", c2: "#3B4551", c3: "#11161C", cs: "#0B0F13" },
+    "COPPER": { c1: "#F2B58A", c2: "#E08A54", c3: "#A8501F", cs: "#6E3213" }
   },
 
   /* Easy-to-edit plain-word meanings for Long text */
@@ -157,7 +157,7 @@ window.QS_MODULES.push({
     return missing;
   },
 
-  /* Build clean side-view + head-view SVG drawing with material colors & labels */
+  /* Build clean side-view + head-view SVG drawing with 3D shading & size scaling */
   buildDrawingSvg: function (values, shortNameText) {
     const mod = this;
     const clean = function (v) {
@@ -172,6 +172,9 @@ window.QS_MODULES.push({
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    };
+    const f2 = function (n) {
+      return Number(n.toFixed(2));
     };
     const wrapLines = function (text, maxChars) {
       const str = clean(text);
@@ -204,7 +207,7 @@ window.QS_MODULES.push({
       const pts = [];
       for (let k = 0; k < 6; k++) {
         const ang = (k * 60) * Math.PI / 180;
-        pts.push((hx + rad * Math.cos(ang)).toFixed(1) + "," + (hy + rad * Math.sin(ang)).toFixed(1));
+        pts.push(f2(hx + rad * Math.cos(ang)) + "," + f2(hy + rad * Math.sin(ang)));
       }
       return pts.join(" ");
     };
@@ -216,25 +219,52 @@ window.QS_MODULES.push({
     const grade = upper(values.grade);
     const machine = clean(values.machine);
 
-    const hasType = Boolean(type);
-    const matPalette = (material && mod.materialColors && mod.materialColors[material]) ? mod.materialColors[material] : null;
-    const useShine = Boolean(matPalette && matPalette.shine);
-    const fillColor = matPalette
-      ? (useShine ? "url(#nut-ss-grad)" : matPalette.fill)
-      : (hasType ? "#D5DCE3" : "#EEF2F6");
-    const shadeColor = matPalette ? matPalette.shade : (hasType ? "#BCC7D2" : "#E2E8F0");
-    const strokeColor = matPalette ? matPalette.stroke : (hasType ? "#475569" : "#94A3B8");
-    const threadColor = matPalette ? matPalette.thread : (hasType ? "#64748B" : "#CBD5E1");
-    const dotColor = matPalette ? matPalette.dot : "#EEF2F6";
+    /* Palette (c1 light, c2 mid, c3 dark, cs outline) */
+    const defaultPal = { c1: "#F1F5F9", c2: "#D5DCE3", c3: "#94A3B8", cs: "#64748B" };
+    const pal = (material && mod.materialColors && mod.materialColors[material])
+      ? mod.materialColors[material]
+      : defaultPal;
+    const c1 = pal.c1;
+    const c2 = pal.c2;
+    const c3 = pal.c3;
+    const cs = pal.cs;
 
-    const defsSvg = useShine
-      ? '<defs><linearGradient id="nut-ss-grad" x1="0%" y1="0%" x2="100%" y2="100%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="35%" stop-color="#FFFFFF" />' +
-          '<stop offset="68%" stop-color="#CBD5E1" />' +
-          '<stop offset="100%" stop-color="#F1F5F9" />' +
-        '</linearGradient></defs>'
-      : "";
+    /* Unique gradient ID prefix per drawing */
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "nut-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
+    const gHeadL = uid + "-hl";
+    const gHeadC = uid + "-hc";
+    const gHeadR = uid + "-hr";
+    const gHeadV = uid + "-hv";
+    const gNylon = uid + "-nylon";
+
+    const defsSvg =
+      "<defs>" +
+        '<linearGradient id="' + gHeadL + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+          '<stop offset="0%" stop-color="' + c2 + '" />' +
+          '<stop offset="55%" stop-color="' + c1 + '" />' +
+          '<stop offset="100%" stop-color="' + c2 + '" />' +
+        "</linearGradient>" +
+        '<linearGradient id="' + gHeadC + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+          '<stop offset="0%" stop-color="' + c1 + '" />' +
+          '<stop offset="55%" stop-color="' + c2 + '" />' +
+          '<stop offset="100%" stop-color="' + c3 + '" />' +
+        "</linearGradient>" +
+        '<linearGradient id="' + gHeadR + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+          '<stop offset="0%" stop-color="' + c2 + '" />' +
+          '<stop offset="100%" stop-color="' + c3 + '" />' +
+        "</linearGradient>" +
+        '<linearGradient id="' + gHeadV + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="' + c1 + '" />' +
+          '<stop offset="55%" stop-color="' + c2 + '" />' +
+          '<stop offset="100%" stop-color="' + c3 + '" />' +
+        "</linearGradient>" +
+        '<linearGradient id="' + gNylon + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="#3B82F6" />' +
+          '<stop offset="35%" stop-color="#1E3A8A" />' +
+          '<stop offset="100%" stop-color="#172554" />' +
+        "</linearGradient>" +
+      "</defs>";
 
     /* Top short-name lines */
     const topText = clean(shortNameText);
@@ -248,275 +278,327 @@ window.QS_MODULES.push({
       return (
         '<text x="190" y="' + y + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + color + '">' +
           esc(line) +
-        '</text>'
+        "</text>"
       );
     }).join("");
 
-    /* Nut geometry anchored around cx = 158 (shifted left to leave clean Head view room) */
-    const xL = 121;
-    const xF1 = 139;
-    const xF2 = 177;
-    const xR = 195;
-    const xBoreL = 144;
-    const xBoreR = 172;
+    /* Size scaling calculations */
+    const dMatch = diameter.match(/^M(\d+(?:\.\d+)?)$/);
+    const dParsed = dMatch ? parseFloat(dMatch[1]) : NaN;
+    const dNum = (!isNaN(dParsed) && dParsed > 0) ? dParsed : 16;
+
+    const W = 1.73 * dNum;
+    let hFactor = 0.8;
+    if (type === "THIN" || type === "JAM") hFactor = 0.5;
+    else if (type === "SELF LOCKING") hFactor = 0.9;
+    else if (type === "NYLOC") hFactor = 1.2;
+    else if (type === "COUPLING") hFactor = 3.0;
+
+    const hNum = hFactor * dNum;
+    const sc = Math.min(6, 120 / hNum, 110 / W);
+
+    const nutW = W * sc;
+    const totalH = hNum * sc;
+    const boreW = dNum * sc;
+
+    const PITCH_TABLE = {
+      4: 0.7, 5: 0.8, 6: 1, 7: 1, 8: 1.25, 10: 1.5, 12: 1.75, 14: 2,
+      16: 2, 18: 2.5, 20: 2.5, 22: 2.5, 24: 3, 27: 3, 30: 3.5, 36: 4, 42: 4.5
+    };
+    const stdPitch = PITCH_TABLE[Math.round(dNum)] || Math.max(0.7, dNum * 0.125);
+    const threadStep = Math.max(stdPitch * sc, 4);
+
+    /* Geometry anchored around cx = 166 */
+    const cx = 166;
+    const xL = cx - nutW / 2;
+    const xR = cx + nutW / 2;
+    const fW = nutW / 4;
+    const xF1 = xL + fW;
+    const xF2 = xR - fW;
+    const xBoreL = cx - boreW / 2;
+    const xBoreR = cx + boreW / 2;
     const yOffset = topShift;
 
     const drawHexBody = function (yTop, yBot) {
-      const ch = 4;
-      const bodyPath =
-        "M" + (xL + ch) + " " + yTop +
-        " H" + (xR - ch) +
-        " L" + xR + " " + (yTop + ch) +
-        " V" + (yBot - ch) +
-        " L" + (xR - ch) + " " + yBot +
-        " H" + (xL + ch) +
-        " L" + xL + " " + (yBot - ch) +
-        " V" + (yTop + ch) + " Z";
+      const bodyH = Math.max(8, yBot - yTop);
+      const hRound = Math.max(1.8, Math.min(4.5, bodyH * 0.14));
 
-      const rightShadePath =
-        "M" + xF2 + " " + yTop +
-        " H" + (xR - ch) +
-        " L" + xR + " " + (yTop + ch) +
-        " V" + (yBot - ch) +
-        " L" + (xR - ch) + " " + yBot +
-        " H" + xF2 + " Z";
+      const leftFace =
+        "M " + f2(xL) + " " + f2(yBot - hRound) +
+        " V " + f2(yTop + hRound) +
+        " Q " + f2(xL) + " " + f2(yTop) + " " + f2(xF1) + " " + f2(yTop) +
+        " V " + f2(yBot) +
+        " Q " + f2(xL) + " " + f2(yBot) + " " + f2(xL) + " " + f2(yBot - hRound) + " Z";
 
-      const leftShadePath =
-        "M" + (xL + ch) + " " + yTop +
-        " H" + xF1 +
-        " V" + yBot +
-        " H" + (xL + ch) +
-        " L" + xL + " " + (yBot - ch) +
-        " V" + (yTop + ch) + " Z";
+      const centerFace =
+        "M " + f2(xF1) + " " + f2(yBot) +
+        " V " + f2(yTop) +
+        " Q " + cx + " " + f2(yTop - hRound * 0.65) + " " + f2(xF2) + " " + f2(yTop) +
+        " V " + f2(yBot) +
+        " Q " + cx + " " + f2(yBot + hRound * 0.65) + " " + f2(xF1) + " " + f2(yBot) + " Z";
 
-      const threadTicks = [];
-      for (let ty = yTop + 5; ty <= yBot - 5; ty += 5) {
-        threadTicks.push(
-          '<line x1="' + xBoreL + '" y1="' + ty + '" x2="' + (xBoreL + 4) + '" y2="' + (ty + 2) + '" stroke="' + threadColor + '" stroke-width="1.2" />' +
-          '<line x1="' + xBoreR + '" y1="' + ty + '" x2="' + (xBoreR - 4) + '" y2="' + (ty + 2) + '" stroke="' + threadColor + '" stroke-width="1.2" />'
+      const rightFace =
+        "M " + f2(xF2) + " " + f2(yBot) +
+        " V " + f2(yTop) +
+        " Q " + f2(xR) + " " + f2(yTop) + " " + f2(xR) + " " + f2(yTop + hRound) +
+        " V " + f2(yBot - hRound) +
+        " Q " + f2(xR) + " " + f2(yBot) + " " + f2(xF2) + " " + f2(yBot) + " Z";
+
+      /* Bore curved thread lines */
+      const bx1 = f2(xBoreL + 1);
+      const bx2 = f2(xBoreR - 1);
+      const dip = Math.max(1.2, Math.min(2.6, boreW * 0.06));
+      const slope = Math.max(0.7, Math.min(1.8, threadStep * 0.25));
+      const threadCurves = [];
+      for (let ty = yTop + 3.5; ty <= yBot - 3.5; ty += threadStep) {
+        const ya = f2(ty);
+        const yb = f2(ty + slope);
+        const yCtrl = f2((ya + yb) * 0.5 + dip);
+        threadCurves.push(
+          '<path d="M ' + bx1 + " " + ya + " Q " + cx + " " + yCtrl + " " + bx2 + " " + yb + '" fill="none" stroke="' + c3 + '" stroke-width="1.35" stroke-linecap="round" opacity="0.72" />' +
+          '<path d="M ' + bx1 + " " + f2(ya + 0.9) + " Q " + cx + " " + f2(yCtrl + 0.9) + " " + bx2 + " " + f2(yb + 0.9) + '" fill="none" stroke="#FFFFFF" stroke-width="0.75" stroke-linecap="round" opacity="0.4" />'
         );
       }
 
       return (
-        '<path d="' + bodyPath + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.8" stroke-linejoin="round" />' +
-        '<path d="' + leftShadePath + '" fill="' + shadeColor + '" opacity="0.55" />' +
-        '<path d="' + rightShadePath + '" fill="' + shadeColor + '" />' +
-        (useShine ? '<line x1="150" y1="' + (yTop + 5) + '" x2="150" y2="' + (yBot - 5) + '" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.85" />' : '') +
-        '<path d="' + bodyPath + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.8" stroke-linejoin="round" />' +
-        '<line x1="' + xF1 + '" y1="' + yTop + '" x2="' + xF1 + '" y2="' + yBot + '" stroke="' + strokeColor + '" stroke-width="1.4" />' +
-        '<line x1="' + xF2 + '" y1="' + yTop + '" x2="' + xF2 + '" y2="' + yBot + '" stroke="' + strokeColor + '" stroke-width="1.4" />' +
-        '<path d="M' + xL + ' ' + (yTop + ch) + ' Q130 ' + (yTop + ch + 3) + ' ' + xF1 + ' ' + (yTop + ch) + ' Q158 ' + (yTop + ch + 4) + ' ' + xF2 + ' ' + (yTop + ch) + ' Q186 ' + (yTop + ch + 3) + ' ' + xR + ' ' + (yTop + ch) + '" fill="none" stroke="' + strokeColor + '" stroke-width="1" opacity="0.5" />' +
-        '<path d="M' + xL + ' ' + (yBot - ch) + ' Q130 ' + (yBot - ch - 3) + ' ' + xF1 + ' ' + (yBot - ch) + ' Q158 ' + (yBot - ch - 4) + ' ' + xF2 + ' ' + (yBot - ch) + ' Q186 ' + (yBot - ch - 3) + ' ' + xR + ' ' + (yBot - ch) + '" fill="none" stroke="' + strokeColor + '" stroke-width="1" opacity="0.5" />' +
-        '<line x1="' + xBoreL + '" y1="' + yTop + '" x2="' + xBoreL + '" y2="' + yBot + '" stroke="' + threadColor + '" stroke-width="1.3" stroke-dasharray="3 2.5" />' +
-        '<line x1="' + xBoreR + '" y1="' + yTop + '" x2="' + xBoreR + '" y2="' + yBot + '" stroke="' + threadColor + '" stroke-width="1.3" stroke-dasharray="3 2.5" />' +
-        threadTicks.join("")
+        '<path d="' + leftFace + '" fill="url(#' + gHeadL + ')" stroke="' + cs + '" stroke-width="1.1" stroke-linejoin="round" />' +
+        '<path d="' + centerFace + '" fill="url(#' + gHeadC + ')" stroke="' + cs + '" stroke-width="1.1" stroke-linejoin="round" />' +
+        '<path d="' + rightFace + '" fill="url(#' + gHeadR + ')" stroke="' + cs + '" stroke-width="1.1" stroke-linejoin="round" />' +
+        '<line x1="' + f2(xBoreL) + '" y1="' + f2(yTop + 1) + '" x2="' + f2(xBoreL) + '" y2="' + f2(yBot - 1) + '" stroke="' + c3 + '" stroke-width="1.3" stroke-dasharray="3 2.5" />' +
+        '<line x1="' + f2(xBoreR) + '" y1="' + f2(yTop + 1) + '" x2="' + f2(xBoreR) + '" y2="' + f2(yBot - 1) + '" stroke="' + c3 + '" stroke-width="1.3" stroke-dasharray="3 2.5" />' +
+        threadCurves.join("")
       );
     };
 
+    const dimTopY = (type === "COUPLING" ? 74 : 90) + yOffset;
+    const nutTopY = dimTopY;
+    const nutBotY = dimTopY + totalH;
+
     let shapeSvg = "";
-    let nutTopY = 124 + yOffset;
     let typeTargetX = xR;
-    let typeTargetY = 130 + yOffset;
-    let matTargetY = 152 + yOffset;
-    let gradeTargetY = 172 + yOffset;
+    let typeTargetY = nutTopY + totalH * 0.25;
+    let matTargetY = nutTopY + totalH * 0.5;
+    let gradeTargetY = nutTopY + totalH * 0.78;
 
     if (type === "NYLOC") {
-      const yHexTop = 134 + yOffset;
-      const yHexBot = 182 + yOffset;
-      nutTopY = 112 + yOffset;
-      typeTargetX = 182;
-      typeTargetY = 119 + yOffset;
-      matTargetY = 152 + yOffset;
-      gradeTargetY = 174 + yOffset;
+      const hexH = 0.8 * dNum * sc;
+      const ringH = 0.4 * dNum * sc;
+      const yRingTop = dimTopY;
+      const yHexTop = dimTopY + ringH;
+      const yHexBot = nutBotY;
+
+      const nylonW = nutW * 0.72;
+      const nL = cx - nylonW / 2;
+      const nR = cx + nylonW / 2;
+      const collarTopY = yRingTop + ringH * 0.48;
+      const collarWTop = nutW * 0.80;
+      const collarWBot = nutW * 0.92;
+
+      typeTargetX = nR;
+      typeTargetY = yRingTop + ringH * 0.45;
+      matTargetY = yHexTop + hexH * 0.45;
+      gradeTargetY = yHexTop + hexH * 0.78;
 
       shapeSvg =
-        /* Dark blue round nylon ring stays dark blue (#1E3A8A) */
-        '<rect x="133" y="' + (112 + yOffset) + '" width="50" height="16" rx="7" fill="#1E3A8A" stroke="#0F172A" stroke-width="1.6" />' +
-        '<line x1="140" y1="' + (116 + yOffset) + '" x2="176" y2="' + (116 + yOffset) + '" stroke="#60A5FA" stroke-width="1.4" stroke-linecap="round" opacity="0.7" />' +
-        '<line x1="' + xBoreL + '" y1="' + (112 + yOffset) + '" x2="' + xBoreL + '" y2="' + (126 + yOffset) + '" stroke="#93C5FD" stroke-width="1.2" stroke-dasharray="2.5 2" />' +
-        '<line x1="' + xBoreR + '" y1="' + (112 + yOffset) + '" x2="' + xBoreR + '" y2="' + (126 + yOffset) + '" stroke="#93C5FD" stroke-width="1.2" stroke-dasharray="2.5 2" />' +
-        '<path d="M126 ' + yHexTop + ' L131 ' + (123 + yOffset) + ' H185 L190 ' + yHexTop + ' Z" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1.6" stroke-linejoin="round" />' +
+        '<rect x="' + f2(nL) + '" y="' + f2(yRingTop) + '" width="' + f2(nylonW) + '" height="' + f2(ringH + 2) + '" rx="' + f2(Math.min(10, ringH * 0.52)) + '" fill="url(#' + gNylon + ')" stroke="#0F172A" stroke-width="1.2" />' +
+        '<line x1="' + f2(nL + nylonW * 0.14) + '" y1="' + f2(yRingTop + Math.max(2.5, ringH * 0.24)) + '" x2="' + f2(nR - nylonW * 0.14) + '" y2="' + f2(yRingTop + Math.max(2.5, ringH * 0.24)) + '" stroke="#93C5FD" stroke-width="1.3" stroke-linecap="round" opacity="0.75" />' +
+        '<line x1="' + f2(xBoreL) + '" y1="' + f2(yRingTop + 1) + '" x2="' + f2(xBoreL) + '" y2="' + f2(yHexTop) + '" stroke="#93C5FD" stroke-width="1.15" stroke-dasharray="2.5 2" />' +
+        '<line x1="' + f2(xBoreR) + '" y1="' + f2(yRingTop + 1) + '" x2="' + f2(xBoreR) + '" y2="' + f2(yHexTop) + '" stroke="#93C5FD" stroke-width="1.15" stroke-dasharray="2.5 2" />' +
+        '<path d="M ' + f2(cx - collarWBot / 2) + " " + f2(yHexTop) + " L " + f2(cx - collarWTop / 2) + " " + f2(collarTopY) + " H " + f2(cx + collarWTop / 2) + " L " + f2(cx + collarWBot / 2) + " " + f2(yHexTop) + ' Z" fill="url(#' + gHeadC + ')" stroke="' + cs + '" stroke-width="1.1" stroke-linejoin="round" />' +
         drawHexBody(yHexTop, yHexBot);
     } else if (type === "SELF LOCKING") {
-      const yHexTop = 134 + yOffset;
-      const yHexBot = 182 + yOffset;
-      nutTopY = 114 + yOffset;
-      typeTargetX = 184;
-      typeTargetY = 122 + yOffset;
-      matTargetY = 152 + yOffset;
-      gradeTargetY = 174 + yOffset;
+      const coneH = totalH * 0.26;
+      const yHexTop = dimTopY + coneH;
+      const yHexBot = nutBotY;
+      const coneWTop = nutW * 0.72;
+      const coneWBot = nutW * 0.90;
 
+      typeTargetX = cx + (coneWTop + coneWBot) * 0.25;
+      typeTargetY = dimTopY + coneH * 0.5;
+      matTargetY = yHexTop + (yHexBot - yHexTop) * 0.45;
+      gradeTargetY = yHexTop + (yHexBot - yHexTop) * 0.78;
+
+      const slotD = Math.max(4, coneH * 0.58);
       shapeSvg =
-        '<path d="M127 ' + yHexTop + ' L134 ' + (114 + yOffset) + ' H182 L189 ' + yHexTop + ' Z" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1.7" stroke-linejoin="round" />' +
-        '<path d="M143 ' + (114 + yOffset) + ' v8 M158 ' + (114 + yOffset) + ' v8 M173 ' + (114 + yOffset) + ' v8" stroke="' + strokeColor + '" stroke-width="1.5" stroke-linecap="round" />' +
-        '<line x1="' + xBoreL + '" y1="' + (114 + yOffset) + '" x2="' + xBoreL + '" y2="' + yHexTop + '" stroke="' + threadColor + '" stroke-width="1.2" stroke-dasharray="2.5 2" />' +
-        '<line x1="' + xBoreR + '" y1="' + (114 + yOffset) + '" x2="' + xBoreR + '" y2="' + yHexTop + '" stroke="' + threadColor + '" stroke-width="1.2" stroke-dasharray="2.5 2" />' +
+        '<path d="M ' + f2(cx - coneWBot / 2) + " " + f2(yHexTop) + " L " + f2(cx - coneWTop / 2) + " " + f2(dimTopY) + " H " + f2(cx + coneWTop / 2) + " L " + f2(cx + coneWBot / 2) + " " + f2(yHexTop) + ' Z" fill="url(#' + gHeadC + ')" stroke="' + cs + '" stroke-width="1.1" stroke-linejoin="round" />' +
+        '<path d="M ' + f2(cx - coneWTop * 0.26) + " " + f2(dimTopY) + " v " + f2(slotD) + " M " + cx + " " + f2(dimTopY) + " v " + f2(slotD) + " M " + f2(cx + coneWTop * 0.26) + " " + f2(dimTopY) + " v " + f2(slotD) + '" stroke="' + cs + '" stroke-width="1.3" stroke-linecap="round" />' +
+        '<line x1="' + f2(xBoreL) + '" y1="' + f2(dimTopY + 1) + '" x2="' + f2(xBoreL) + '" y2="' + f2(yHexTop) + '" stroke="' + c3 + '" stroke-width="1.2" stroke-dasharray="2.5 2" />' +
+        '<line x1="' + f2(xBoreR) + '" y1="' + f2(dimTopY + 1) + '" x2="' + f2(xBoreR) + '" y2="' + f2(yHexTop) + '" stroke="' + c3 + '" stroke-width="1.2" stroke-dasharray="2.5 2" />' +
         drawHexBody(yHexTop, yHexBot);
-    } else if (type === "THIN") {
-      const yHexTop = 139 + yOffset;
-      const yHexBot = 165 + yOffset;
-      nutTopY = yHexTop;
-      typeTargetX = xR;
-      typeTargetY = 143 + yOffset;
-      matTargetY = 152 + yOffset;
-      gradeTargetY = 161 + yOffset;
-
-      shapeSvg = drawHexBody(yHexTop, yHexBot);
-    } else if (type === "JAM") {
-      const yHexTop = 133 + yOffset;
-      const yHexBot = 171 + yOffset;
-      nutTopY = yHexTop;
-      typeTargetX = xR;
-      typeTargetY = 139 + yOffset;
-      matTargetY = 152 + yOffset;
-      gradeTargetY = 165 + yOffset;
-
-      shapeSvg = drawHexBody(yHexTop, yHexBot);
-    } else if (type === "COUPLING") {
-      const yHexTop = 94 + yOffset;
-      const yHexBot = 210 + yOffset;
-      nutTopY = yHexTop;
-      typeTargetX = xR;
-      typeTargetY = 108 + yOffset;
-      matTargetY = 152 + yOffset;
-      gradeTargetY = 196 + yOffset;
-
-      shapeSvg = drawHexBody(yHexTop, yHexBot);
     } else {
-      /* HEX or No Type chosen yet */
-      const yHexTop = 124 + yOffset;
-      const yHexBot = 180 + yOffset;
-      nutTopY = yHexTop;
-      typeTargetX = xR;
-      typeTargetY = 132 + yOffset;
-      matTargetY = 152 + yOffset;
-      gradeTargetY = 172 + yOffset;
-
-      shapeSvg = drawHexBody(yHexTop, yHexBot);
+      /* HEX, THIN, JAM, COUPLING, or No Type chosen yet */
+      shapeSvg = drawHexBody(dimTopY, nutBotY);
     }
 
-    /* Head view (top view next to side view) */
-    const hx = 290;
-    const hy = 200 + yOffset;
+    /* Head view (top view on the right, radius = W * sc / 2 clamped 14..30) */
+    const hx = 304;
+    const hvRadius = Math.max(14, Math.min(30, nutW / 2));
+    const holeR = Math.max(4, Math.min(0.5 * boreW, hvRadius * 0.44));
+    const hy = Math.round(188 + hvRadius + yOffset);
+    const hvLabelY = hy - hvRadius - 12;
+
     let headShapeSvg = "";
-    if (!type) {
-      const hvFill = matPalette ? fillColor : "#EEF2F6";
-      const hvStroke = matPalette ? strokeColor : "#94A3B8";
-      headShapeSvg = '<polygon points="' + hexPoints(hx, hy, 25) + '" fill="' + hvFill + '" stroke="' + hvStroke + '" stroke-width="1.8" stroke-linejoin="round" />';
-    } else if (type === "NYLOC") {
+    if (type === "NYLOC") {
+      const nylonOuterR = Math.min(hvRadius * 0.70, Math.max(holeR + 3.5, holeR * 1.4));
+      const threadRingR = (holeR + nylonOuterR) * 0.5;
       headShapeSvg =
-        '<polygon points="' + hexPoints(hx, hy, 26) + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.8" stroke-linejoin="round" />' +
-        '<circle cx="' + hx + '" cy="' + hy + '" r="20.5" fill="none" stroke="' + shadeColor + '" stroke-width="1.1" />' +
-        '<circle cx="' + hx + '" cy="' + hy + '" r="14.5" fill="#1E3A8A" stroke="#0F172A" stroke-width="1.4" />' +
-        '<path d="M' + (hx - 9) + ' ' + (hy - 7) + ' A11 11 0 0 1 ' + (hx + 5) + ' ' + (hy - 10) + '" fill="none" stroke="#60A5FA" stroke-width="1.3" stroke-linecap="round" opacity="0.8" />' +
-        '<circle cx="' + hx + '" cy="' + hy + '" r="8.5" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.3" />';
+        '<polygon points="' + hexPoints(hx, hy, hvRadius) + '" fill="url(#' + gHeadV + ')" stroke="' + cs + '" stroke-width="1.15" stroke-linejoin="round" />' +
+        '<circle cx="' + hx + '" cy="' + hy + '" r="' + f2(hvRadius * 0.78) + '" fill="none" stroke="' + cs + '" stroke-width="0.9" opacity="0.55" />' +
+        '<circle cx="' + hx + '" cy="' + hy + '" r="' + f2(nylonOuterR) + '" fill="url(#' + gNylon + ')" stroke="#0F172A" stroke-width="1.2" />' +
+        '<path d="M ' + f2(hx - nylonOuterR * 0.6) + " " + f2(hy - nylonOuterR * 0.5) + " A " + f2(nylonOuterR * 0.75) + " " + f2(nylonOuterR * 0.75) + " 0 0 1 " + f2(hx + nylonOuterR * 0.35) + " " + f2(hy - nylonOuterR * 0.68) + '" fill="none" stroke="#93C5FD" stroke-width="1.2" stroke-linecap="round" opacity="0.8" />' +
+        '<circle cx="' + hx + '" cy="' + hy + '" r="' + f2(threadRingR) + '" fill="none" stroke="' + c3 + '" stroke-width="0.9" stroke-dasharray="2.5 2" opacity="0.85" />' +
+        '<circle cx="' + hx + '" cy="' + hy + '" r="' + f2(holeR) + '" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.2" />';
     } else {
-      /* HEX, THIN, JAM, SELF LOCKING, COUPLING: hexagon with round hole in the middle */
+      const threadRingR = Math.min(hvRadius * 0.72, holeR + Math.max(2.4, holeR * 0.24));
       headShapeSvg =
-        '<polygon points="' + hexPoints(hx, hy, 26) + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.8" stroke-linejoin="round" />' +
-        '<circle cx="' + hx + '" cy="' + hy + '" r="20.5" fill="none" stroke="' + shadeColor + '" stroke-width="1.1" />' +
-        '<circle cx="' + hx + '" cy="' + hy + '" r="13" fill="none" stroke="' + threadColor + '" stroke-width="1.2" stroke-dasharray="3 2" />' +
-        '<circle cx="' + hx + '" cy="' + hy + '" r="10" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="1.6" />';
+        '<polygon points="' + hexPoints(hx, hy, hvRadius) + '" fill="url(#' + gHeadV + ')" stroke="' + cs + '" stroke-width="1.15" stroke-linejoin="round" />' +
+        '<circle cx="' + hx + '" cy="' + hy + '" r="' + f2(hvRadius * 0.78) + '" fill="none" stroke="' + cs + '" stroke-width="0.9" opacity="0.55" />' +
+        '<circle cx="' + hx + '" cy="' + hy + '" r="' + f2(threadRingR) + '" fill="none" stroke="' + c3 + '" stroke-width="1.1" stroke-dasharray="3 2" />' +
+        '<circle cx="' + hx + '" cy="' + hy + '" r="' + f2(holeR) + '" fill="#FFFFFF" stroke="' + cs + '" stroke-width="1.3" />';
     }
-    if (useShine && type) {
-      headShapeSvg += '<path d="M' + (hx - 14) + ' ' + (hy - 14) + ' A18 18 0 0 1 ' + (hx + 2) + ' ' + (hy - 18) + '" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.9" />';
+
+    const gradeTextClean = grade ? (grade.charAt(0) === "G" ? grade.slice(1) : grade) : "";
+    let headGradeSvg = "";
+    if (gradeTextClean) {
+      const maxFs = gradeTextClean.length > 4 ? Math.min(9.5, holeR * 0.68) : Math.min(10.5, holeR * 0.86);
+      const gFs = Math.max(6.8, maxFs);
+      headGradeSvg =
+        '<text x="' + hx + '" y="' + f2(hy + gFs * 0.35) + '" text-anchor="middle" font-size="' + f2(gFs) + '" font-weight="800" fill="' + cs + '">' +
+          esc(gradeTextClean) +
+        "</text>";
     }
+
     const headViewSvg =
       '<g class="head-view-animate">' +
-        '<text x="' + hx + '" y="' + (162 + yOffset) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="#476B62">Head view</text>' +
+        '<text x="' + hx + '" y="' + f2(hvLabelY) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#476B62">Head view</text>' +
         headShapeSvg +
-      '</g>';
+        headGradeSvg +
+      "</g>";
 
-    /* Dimension & Pointer Labels */
+    /* Dimension & Pointer Labels (non-overlapping fixed columns) */
     const reqColor = "#10302A";
     const optColor = "#0F3B33";
     const missingColor = "#64748B";
 
     /* Left side: Diameter across internal bore above nut */
-    const yDiaBar = 78 + yOffset;
+    const xLeftText = 98;
+    const yDiaBar = dimTopY - 22;
     const diaLabel = diameter ? ("Diameter: " + diameter) : "Diameter: ?";
     const diaColor = diameter ? reqColor : missingColor;
     const diaSvg =
-      '<line x1="' + xBoreL + '" y1="' + (yDiaBar - 4) + '" x2="' + xBoreL + '" y2="' + nutTopY + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2.5 2.5" />' +
-      '<line x1="' + xBoreR + '" y1="' + (yDiaBar - 4) + '" x2="' + xBoreR + '" y2="' + nutTopY + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2.5 2.5" />' +
-      '<line x1="112" y1="' + yDiaBar + '" x2="' + xBoreR + '" y2="' + yDiaBar + '" stroke="' + diaColor + '" stroke-width="1.3" />' +
-      '<polygon points="' + xBoreL + ',' + yDiaBar + ' ' + (xBoreL - 5) + ',' + (yDiaBar - 3) + ' ' + (xBoreL - 5) + ',' + (yDiaBar + 3) + '" fill="' + diaColor + '" />' +
-      '<polygon points="' + xBoreR + ',' + yDiaBar + ' ' + (xBoreR + 5) + ',' + (yDiaBar - 3) + ' ' + (xBoreR + 5) + ',' + (yDiaBar + 3) + '" fill="' + diaColor + '" />' +
-      '<text x="108" y="' + (yDiaBar + 4) + '" text-anchor="end" font-size="12" font-weight="700" fill="' + diaColor + '">' + esc(diaLabel) + '</text>';
+      '<line x1="' + f2(xBoreL) + '" y1="' + f2(yDiaBar - 4) + '" x2="' + f2(xBoreL) + '" y2="' + f2(nutTopY) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2.5 2.5" />' +
+      '<line x1="' + f2(xBoreR) + '" y1="' + f2(yDiaBar - 4) + '" x2="' + f2(xBoreR) + '" y2="' + f2(nutTopY) + '" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2.5 2.5" />' +
+      '<line x1="' + (xLeftText + 4) + '" y1="' + f2(yDiaBar) + '" x2="' + f2(xBoreR) + '" y2="' + f2(yDiaBar) + '" stroke="' + diaColor + '" stroke-width="1.15" />' +
+      '<polygon points="' + f2(xBoreL) + "," + f2(yDiaBar) + " " + f2(xBoreL - 5) + "," + f2(yDiaBar - 3) + " " + f2(xBoreL - 5) + "," + f2(yDiaBar + 3) + '" fill="' + diaColor + '" />' +
+      '<polygon points="' + f2(xBoreR) + "," + f2(yDiaBar) + " " + f2(xBoreR + 5) + "," + f2(yDiaBar - 3) + " " + f2(xBoreR + 5) + "," + f2(yDiaBar + 3) + '" fill="' + diaColor + '" />' +
+      '<text x="' + xLeftText + '" y="' + f2(yDiaBar + 4) + '" text-anchor="end" font-size="11.5" font-weight="700" fill="' + diaColor + '">' + esc(diaLabel) + "</text>";
 
     /* Left side: Pitch (only if filled) */
     let pitchSvg = "";
     if (pitch) {
-      const yPitchLabel = 186 + yOffset;
-      const yPitchTarget = 156 + yOffset;
+      const yPitchTarget = (nutTopY + nutBotY) * 0.55;
+      const yPitchLabel = Math.max(yDiaBar + 22, yPitchTarget + 16);
       pitchSvg =
-        '<polyline points="112,' + yPitchLabel + ' 118,' + yPitchLabel + ' ' + xBoreL + ',' + yPitchTarget + '" fill="none" stroke="' + optColor + '" stroke-width="1.2" />' +
-        '<circle cx="' + xBoreL + '" cy="' + yPitchTarget + '" r="2.2" fill="' + optColor + '" />' +
-        '<text x="108" y="' + (yPitchLabel + 4) + '" text-anchor="end" font-size="12" font-weight="700" fill="' + optColor + '">Pitch: ' + esc(pitch) + '</text>';
+        '<polyline points="' + (xLeftText + 4) + "," + f2(yPitchLabel) + " " + (xLeftText + 10) + "," + f2(yPitchLabel) + " " + f2(xBoreL) + "," + f2(yPitchTarget) + '" fill="none" stroke="' + optColor + '" stroke-width="1.05" />' +
+        '<circle cx="' + f2(xBoreL) + '" cy="' + f2(yPitchTarget) + '" r="2" fill="' + optColor + '" />' +
+        '<text x="' + xLeftText + '" y="' + f2(yPitchLabel + 4) + '" text-anchor="end" font-size="11.5" font-weight="700" fill="' + optColor + '">Pitch: ' + esc(pitch) + "</text>";
     }
 
-    /* Right side: Pointer labels ordered cleanly above Head view */
+    /* Fixed right-side label column (x = 236) */
+    const xLabelCol = 236;
     const rightPointer = function (yLabel, yTarget, xTarget, labelText, color) {
-      const fontSize = labelText.length > 16 ? "11.5" : "12";
+      const fontSize = labelText.length > 15 ? "11" : "11.5";
       return (
-        '<polyline points="' + xTarget + ',' + yTarget + ' 204,' + yLabel + ' 212,' + yLabel + '" fill="none" stroke="' + color + '" stroke-width="1.2" />' +
-        '<circle cx="' + xTarget + '" cy="' + yTarget + '" r="2.2" fill="' + color + '" />' +
-        '<text x="216" y="' + (yLabel + 4) + '" text-anchor="start" font-size="' + fontSize + '" font-weight="700" fill="' + color + '">' + esc(labelText) + '</text>'
+        '<polyline points="' + f2(xTarget) + "," + f2(yTarget) + " " + (xLabelCol - 10) + "," + f2(yLabel) + " " + (xLabelCol - 4) + "," + f2(yLabel) + '" fill="none" stroke="' + color + '" stroke-width="1" />' +
+        '<circle cx="' + f2(xTarget) + '" cy="' + f2(yTarget) + '" r="2" fill="' + color + '" />' +
+        '<text x="' + xLabelCol + '" y="' + f2(yLabel + 4) + '" text-anchor="start" font-size="' + fontSize + '" font-weight="700" fill="' + color + '">' + esc(labelText) + "</text>"
       );
     };
 
     const typeLabel = type ? ("Type: " + type) : "Type: ?";
-    const typeSvg = rightPointer(76 + yOffset, typeTargetY, typeTargetX, typeLabel, type ? reqColor : missingColor);
+    const typeSvg = rightPointer(74 + yOffset, typeTargetY, typeTargetX, typeLabel, type ? reqColor : missingColor);
 
     let materialSvg = "";
     if (material) {
       const yMat = 102 + yOffset;
       const matText = "Material: " + material;
-      const matFs = matText.length > 15 ? "11.5" : "12";
+      const matFs = matText.length > 14 ? "11" : "11.5";
       materialSvg =
-        '<polyline points="' + xR + ',' + matTargetY + ' 204,' + yMat + ' 212,' + yMat + '" fill="none" stroke="' + optColor + '" stroke-width="1.2" />' +
-        '<circle cx="' + xR + '" cy="' + matTargetY + '" r="2.2" fill="' + optColor + '" />' +
-        '<circle cx="220" cy="' + yMat + '" r="4.8" fill="' + dotColor + '" stroke="' + strokeColor + '" stroke-width="1.1" />' +
-        '<text x="229" y="' + (yMat + 4) + '" text-anchor="start" font-size="' + matFs + '" font-weight="700" fill="' + optColor + '">' + esc(matText) + '</text>';
+        '<polyline points="' + f2(xR) + "," + f2(matTargetY) + " " + (xLabelCol - 10) + "," + yMat + " " + (xLabelCol - 4) + "," + yMat + '" fill="none" stroke="' + optColor + '" stroke-width="1" />' +
+        '<circle cx="' + f2(xR) + '" cy="' + f2(matTargetY) + '" r="2" fill="' + optColor + '" />' +
+        '<circle cx="' + (xLabelCol + 4) + '" cy="' + yMat + '" r="5" fill="' + c2 + '" stroke="' + cs + '" stroke-width="1" />' +
+        '<text x="' + (xLabelCol + 13) + '" y="' + (yMat + 4) + '" text-anchor="start" font-size="' + matFs + '" font-weight="700" fill="' + optColor + '">' + esc(matText) + "</text>";
     }
 
     const gradeLabel = grade ? ("Grade: " + grade) : "Grade: ?";
-    const gradeSvg = rightPointer(128 + yOffset, gradeTargetY, xR, gradeLabel, grade ? reqColor : missingColor);
+    const gradeSvg = rightPointer(130 + yOffset, gradeTargetY, xR, gradeLabel, grade ? reqColor : missingColor);
 
-    /* Bottom: For machine (only if filled, wraps cleanly below both views) */
+    /* Scale bar at bottom (10, 20, 50, 100 or 200 mm -> 30..100 px) */
+    const scaleCandidates = [10, 20, 50, 100, 200];
+    let scaleMm = 20;
+    let bestDist = Infinity;
+    let foundInRange = false;
+    scaleCandidates.forEach(function (cand) {
+      const px = cand * sc;
+      if (px >= 30 && px <= 100) {
+        foundInRange = true;
+        const dist = Math.abs(px - 55);
+        if (dist < bestDist) {
+          bestDist = dist;
+          scaleMm = cand;
+        }
+      }
+    });
+    if (!foundInRange) {
+      scaleMm = (10 * sc > 100) ? 10 : 200;
+    }
+    const scalePx = Math.max(12, Math.min(140, scaleMm * sc));
+    const yScale = Math.max(nutBotY + 24, hy + hvRadius + 24);
+    const xScale1 = f2(cx - scalePx / 2);
+    const xScale2 = f2(cx + scalePx / 2);
+    const scaleBarSvg =
+      '<g class="nut-scale-bar">' +
+        '<line x1="' + xScale1 + '" y1="' + f2(yScale) + '" x2="' + xScale2 + '" y2="' + f2(yScale) + '" stroke="#476B62" stroke-width="1.4" />' +
+        '<line x1="' + xScale1 + '" y1="' + f2(yScale - 4) + '" x2="' + xScale1 + '" y2="' + f2(yScale + 4) + '" stroke="#476B62" stroke-width="1.4" />' +
+        '<line x1="' + xScale2 + '" y1="' + f2(yScale - 4) + '" x2="' + xScale2 + '" y2="' + f2(yScale + 4) + '" stroke="#476B62" stroke-width="1.4" />' +
+        '<text x="' + cx + '" y="' + f2(yScale + 14) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#476B62">' + scaleMm + " mm</text>" +
+      "</g>";
+
+    /* Bottom: For machine (only if filled, wraps cleanly below scale bar) */
     let machineSvg = "";
     let machineHeight = 0;
     if (machine) {
       const machineLines = wrapLines("For machine: " + machine, 40);
-      machineHeight = machineLines.length * 16 + 10;
+      machineHeight = machineLines.length * 16 + 8;
       machineSvg = machineLines.map(function (line, i) {
-        const y = 254 + yOffset + i * 16;
+        const y = yScale + 34 + i * 16;
         return (
-          '<text x="190" y="' + y + '" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0F3B33">' +
+          '<text x="190" y="' + f2(y) + '" text-anchor="middle" font-size="12" font-weight="700" fill="#0F3B33">' +
             esc(line) +
-          '</text>'
+          "</text>"
         );
       }).join("");
     }
 
-    const totalHeight = Math.max(246 + yOffset + machineHeight, 260 + yOffset);
+    const totalHeight = Math.round(yScale + 26 + machineHeight);
 
     return (
-      '<svg viewBox="0 0 380 ' + totalHeight + '" role="img" aria-label="Nut technical drawing">' +
+      '<svg viewBox="0 0 380 ' + totalHeight + '" shape-rendering="geometricPrecision" role="img" aria-label="Nut technical drawing">' +
         defsSvg +
         '<rect x="0" y="0" width="380" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
         '<g class="bolt-shape-animate">' +
           shapeSvg +
-        '</g>' +
+        "</g>" +
         headViewSvg +
         diaSvg +
         pitchSvg +
         typeSvg +
         materialSvg +
         gradeSvg +
+        scaleBarSvg +
         machineSvg +
-      '</svg>'
+      "</svg>"
     );
   },
 

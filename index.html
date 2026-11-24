@@ -2723,6 +2723,8 @@
     <script src="items/elbow.js"></script>
     <script src="items/tee.js"></script>
     <script src="items/reducer.js"></script>
+    <script src="items/nipple.js"></script>
+    <script src="items/ubolt.js"></script>
     <script>
       const MODULES = window.QS_MODULES;
     </script>
@@ -3548,6 +3550,19 @@
           if (!text) return "other";
 
           const list = matchers || getModuleMatchers();
+          for (let u = 0; u < list.length; u++) {
+            const uEntry = list[u];
+            if (uEntry.mod.id !== "ubolt") continue;
+            const uExcluded = uEntry.excludeRegexes && uEntry.excludeRegexes.some(function (rx) {
+              return rx.test(text);
+            });
+            if (!uExcluded) {
+              const uMatched = uEntry.coreRegexes.some(function (rx) { return rx.test(text); }) ||
+                uEntry.extraRegexes.some(function (rx) { return rx.test(text); });
+              if (uMatched) return "ubolt";
+            }
+          }
+
           let bestId = "other";
           let bestScore = 0;
 
