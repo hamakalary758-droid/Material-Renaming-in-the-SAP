@@ -1,0 +1,6 @@
+{
+  "name": "QS Material Planner",
+  "description": "Offline-first SAP material short and long text planner dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
