@@ -321,7 +321,11 @@ window.QS_MODULES.push({
     /* Hose arch coordinates from x=88 to x=272 */
     const yBase = 152 + yOffset;
     const yPeak = 114 + yOffset;
-    const archD = "M 88 " + yBase + " C 138 " + yPeak + ", 222 " + yPeak + ", 272 " + yBase;
+    const yTop = yBase + 0.75 * (yPeak - yBase);
+    const archD =
+      "M 88 " + yBase +
+      " C 120 " + yBase + ", 150 " + yTop + ", 180 " + yTop +
+      " C 210 " + yTop + ", 240 " + yBase + ", 272 " + yBase;
 
     /* Construction palette (empty = WW dark rubber) */
     let bodyHi = "#4B5563";
@@ -344,13 +348,24 @@ window.QS_MODULES.push({
       stripeOpacity = "0.62";
     }
 
-    /* Sample points along the cubic Bezier for clipPath + spiral / braid texture */
+    /* Sample points along the two cubic Beziers for clipPath + spiral / braid texture */
     const bezPt = function (t) {
-      const mt = 1 - t;
-      const x = mt * mt * mt * 88 + 3 * mt * mt * t * 138 + 3 * mt * t * t * 222 + t * t * t * 272;
-      const y = mt * mt * mt * yBase + 3 * mt * mt * t * yPeak + 3 * mt * t * t * yPeak + t * t * t * yBase;
-      const dx = 3 * mt * mt * (138 - 88) + 6 * mt * t * (222 - 138) + 3 * t * t * (272 - 222);
-      const dy = 3 * mt * mt * (yPeak - yBase) + 6 * mt * t * 0 + 3 * t * t * (yBase - yPeak);
+      let x, y, dx, dy;
+      if (t <= 0.5) {
+        const u = t * 2;
+        const mu = 1 - u;
+        x = mu * mu * mu * 88 + 3 * mu * mu * u * 120 + 3 * mu * u * u * 150 + u * u * u * 180;
+        y = mu * mu * mu * yBase + 3 * mu * mu * u * yBase + 3 * mu * u * u * yTop + u * u * u * yTop;
+        dx = 3 * mu * mu * 32 + 6 * mu * u * 30 + 3 * u * u * 30;
+        dy = 6 * mu * u * (yTop - yBase);
+      } else {
+        const u = (t - 0.5) * 2;
+        const mu = 1 - u;
+        x = mu * mu * mu * 180 + 3 * mu * mu * u * 210 + 3 * mu * u * u * 240 + u * u * u * 272;
+        y = mu * mu * mu * yTop + 3 * mu * mu * u * yTop + 3 * mu * u * u * yBase + u * u * u * yBase;
+        dx = 3 * mu * mu * 30 + 6 * mu * u * 30 + 3 * u * u * 32;
+        dy = 6 * mu * u * (yBase - yTop);
+      }
       const len = Math.hypot(dx, dy) || 1;
       return { x: x, y: y, tx: dx / len, ty: dy / len, nx: -dy / len, ny: dx / len };
     };
