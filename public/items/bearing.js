@@ -251,7 +251,7 @@ window.QS_MODULES.push({
     return missing;
   },
 
-  /* Build crisp steel-colored front + section SVG drawing across 7 bearing families */
+  /* Build realistic shaded front + section SVG drawing across 7 bearing families */
   buildDrawingSvg: function (values, shortNameText) {
     const mod = this;
     const clean = function (v) {
@@ -319,7 +319,6 @@ window.QS_MODULES.push({
 
     const has2Z = Boolean(seen["2Z"]);
     const has2RS = Boolean(seen["2RS"]);
-    const pal = mod.drawingColors;
 
     const drawingChoiceMap = {
       "Ball": "ball",
@@ -355,20 +354,111 @@ window.QS_MODULES.push({
       );
     }).join("");
 
+    /* Unique gradient IDs per drawing */
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "brg-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
+    const gOuterRing = uid + "-oring";
+    const gInnerRing = uid + "-iring";
+    const gNeedleOuter = uid + "-noring";
+    const gNeedleInner = uid + "-niring";
+    const gRaceway = uid + "-race";
+    const gNeedleRaceway = uid + "-nrace";
+    const gRacewaySide = uid + "-raceside";
+    const gSteelSide = uid + "-steelside";
+    const gBall = uid + "-ball";
+    const gRollerH = uid + "-rollh";
+    const gRollerV = uid + "-rollv";
+    const gBore = uid + "-bore";
+    const gBoreSide = uid + "-boreside";
+    const gShield = uid + "-shield";
+    const gRubber = uid + "-rubber";
+
+    const makeRingRadial = function (id, innerPct) {
+      const mid1 = (innerPct + (100 - innerPct) * 0.42).toFixed(1);
+      const mid2 = (innerPct + (100 - innerPct) * 0.76).toFixed(1);
+      return (
+        '<radialGradient id="' + id + '" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="0%" stop-color="#77828F" />' +
+          '<stop offset="' + innerPct.toFixed(1) + '%" stop-color="#8E9AA8" />' +
+          '<stop offset="' + mid1 + '%" stop-color="#F1F5F9" />' +
+          '<stop offset="' + mid2 + '%" stop-color="#C3CDD8" />' +
+          '<stop offset="100%" stop-color="#77828F" />' +
+        '</radialGradient>'
+      );
+    };
+
     const defsSvg =
       '<defs>' +
-        '<linearGradient id="brg-steel-grad" x1="0%" y1="0%" x2="100%" y2="100%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="45%" stop-color="#E2E8F0" />' +
-          '<stop offset="100%" stop-color="#CBD5E1" />' +
+        makeRingRadial(gOuterRing, (51 / 66) * 100) +
+        makeRingRadial(gInnerRing, (16 / 27) * 100) +
+        makeRingRadial(gNeedleOuter, (55 / 64) * 100) +
+        makeRingRadial(gNeedleInner, (33 / 42) * 100) +
+        '<radialGradient id="' + gRaceway + '" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="0%" stop-color="#5F6B79" />' +
+          '<stop offset="52%" stop-color="#5F6B79" />' +
+          '<stop offset="82%" stop-color="#838F9D" />' +
+          '<stop offset="100%" stop-color="#A3AEBB" />' +
+        '</radialGradient>' +
+        '<radialGradient id="' + gNeedleRaceway + '" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="0%" stop-color="#5F6B79" />' +
+          '<stop offset="76%" stop-color="#5F6B79" />' +
+          '<stop offset="90%" stop-color="#838F9D" />' +
+          '<stop offset="100%" stop-color="#A3AEBB" />' +
+        '</radialGradient>' +
+        '<linearGradient id="' + gRacewaySide + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="#5F6B79" />' +
+          '<stop offset="50%" stop-color="#A3AEBB" />' +
+          '<stop offset="100%" stop-color="#5F6B79" />' +
         '</linearGradient>' +
-        '<radialGradient id="brg-ball-grad" cx="35%" cy="35%" r="65%">' +
+        '<linearGradient id="' + gSteelSide + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="#8E9AA8" />' +
+          '<stop offset="35%" stop-color="#F1F5F9" />' +
+          '<stop offset="72%" stop-color="#C3CDD8" />' +
+          '<stop offset="100%" stop-color="#77828F" />' +
+        '</linearGradient>' +
+        '<radialGradient id="' + gBall + '" cx="35%" cy="35%" r="65%">' +
           '<stop offset="0%" stop-color="#FFFFFF" />' +
           '<stop offset="60%" stop-color="#CBD5E1" />' +
           '<stop offset="100%" stop-color="#64748B" />' +
         '</radialGradient>' +
+        '<linearGradient id="' + gRollerH + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+          '<stop offset="0%" stop-color="#64748B" />' +
+          '<stop offset="35%" stop-color="#FFFFFF" />' +
+          '<stop offset="65%" stop-color="#CBD5E1" />' +
+          '<stop offset="100%" stop-color="#64748B" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gRollerV + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="#64748B" />' +
+          '<stop offset="35%" stop-color="#FFFFFF" />' +
+          '<stop offset="65%" stop-color="#CBD5E1" />' +
+          '<stop offset="100%" stop-color="#64748B" />' +
+        '</linearGradient>' +
+        '<radialGradient id="' + gBore + '" cx="50%" cy="50%" r="50%">' +
+          '<stop offset="0%" stop-color="#FFFFFF" />' +
+          '<stop offset="65%" stop-color="#F1F5F9" />' +
+          '<stop offset="100%" stop-color="#94A3B8" />' +
+        '</radialGradient>' +
+        '<linearGradient id="' + gBoreSide + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="#94A3B8" />' +
+          '<stop offset="25%" stop-color="#F1F5F9" />' +
+          '<stop offset="50%" stop-color="#FFFFFF" />' +
+          '<stop offset="75%" stop-color="#F1F5F9" />' +
+          '<stop offset="100%" stop-color="#94A3B8" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gShield + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="#B8C2CE" />' +
+          '<stop offset="48%" stop-color="#EEF2F6" />' +
+          '<stop offset="100%" stop-color="#8E9AA8" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gRubber + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="#1F2937" />' +
+          '<stop offset="48%" stop-color="#4B5563" />' +
+          '<stop offset="100%" stop-color="#111827" />' +
+        '</linearGradient>' +
       '</defs>';
 
+    const steelStroke = "#5F6B79";
+    const centerLineCol = "#94A3B8";
     const yOffset = topShift;
     const cx = 136;
     const cy = 132 + yOffset;
@@ -384,6 +474,31 @@ window.QS_MODULES.push({
     const sLeft = sx - swHalf;
     const sRight = sx + swHalf;
 
+    const outerHighlightArc = function (outerR) {
+      const hr = outerR - 3.5;
+      const a1 = (-138 * Math.PI) / 180;
+      const a2 = (-48 * Math.PI) / 180;
+      const x1 = (cx + hr * Math.cos(a1)).toFixed(2);
+      const y1 = (cy + hr * Math.sin(a1)).toFixed(2);
+      const x2 = (cx + hr * Math.cos(a2)).toFixed(2);
+      const y2 = (cy + hr * Math.sin(a2)).toFixed(2);
+      return '<path d="M ' + x1 + ' ' + y1 + ' A ' + hr + ' ' + hr + ' 0 0 1 ' + x2 + ' ' + y2 + '" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" opacity="0.65" />';
+    };
+
+    const shadowFront = function (outerR) {
+      return '<ellipse cx="' + cx + '" cy="' + (cy + outerR + 7) + '" rx="52" ry="5" fill="#0f172a" opacity="0.12" />';
+    };
+    const shadowSide = function (outerR) {
+      return '<ellipse cx="' + sx + '" cy="' + (cy + outerR + 7) + '" rx="22" ry="4" fill="#0f172a" opacity="0.12" />';
+    };
+
+    const sideBacking = function (outerR, boreR) {
+      return (
+        '<rect x="' + sLeft + '" y="' + (cy - outerR) + '" width="' + (swHalf * 2) + '" height="' + (outerR * 2) + '" fill="url(#' + gRacewaySide + ')" stroke="' + steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy - boreR) + '" width="' + (swHalf * 2) + '" height="' + (boreR * 2) + '" fill="url(#' + gBoreSide + ')" />'
+      );
+    };
+
     let frontViewSvg = '<text x="' + cx + '" y="' + (cy - rOut - 10) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#476B62">Front view</text>';
     let sideViewSvg = '<text x="' + sx + '" y="' + (cy - rOut - 10) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#476B62">Side section</text>';
 
@@ -394,52 +509,70 @@ window.QS_MODULES.push({
         const bx = (cx + rBallCenter * Math.cos(ang)).toFixed(2);
         const by = (cy + rBallCenter * Math.sin(ang)).toFixed(2);
         ballsSvg +=
-          '<circle cx="' + bx + '" cy="' + by + '" r="' + rBall + '" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />';
+          '<circle cx="' + bx + '" cy="' + by + '" r="' + rBall + '" fill="url(#' + gBall + ')" stroke="' + steelStroke + '" stroke-width="1" />';
       }
 
       let frontClosureSvg = "";
-      if (has2RS) {
-        frontClosureSvg =
-          '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="' + pal.rubberFill + '" stroke="' + pal.rubberStroke + '" stroke-width="1.1" />' +
-          '<circle cx="' + cx + '" cy="' + cy + '" r="' + (rBallCenter + 2) + '" fill="none" stroke="#4B5563" stroke-width="0.9" stroke-dasharray="4 3" />';
-      } else if (has2Z) {
-        frontClosureSvg =
-          '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="' + pal.steelShade + '" stroke="' + pal.steelStroke + '" stroke-width="1.1" />' +
-          '<circle cx="' + cx + '" cy="' + cy + '" r="' + (rBallCenter + 2) + '" fill="none" stroke="' + pal.steelDark + '" stroke-width="0.9" />';
+      if (has2RS || has2Z) {
+        const sealTextColor = has2RS ? "#CBD5E1" : "#334155";
+        const brandFs = brand.length > 10 ? 6.5 : (brand.length > 7 ? 7.5 : 8.5);
+        const numFs = bearingNumber.length > 10 ? 6.5 : (bearingNumber.length > 7 ? 7.5 : 8.5);
+        const sealLabelsSvg =
+          (brand
+            ? '<text x="' + cx + '" y="' + (cy - 36) + '" text-anchor="middle" font-size="' + brandFs + '" font-weight="500" fill="' + sealTextColor + '">' + esc(brand) + '</text>'
+            : "") +
+          (bearingNumber
+            ? '<text x="' + cx + '" y="' + (cy + 41) + '" text-anchor="middle" font-size="' + numFs + '" font-weight="500" fill="' + sealTextColor + '">' + esc(bearingNumber) + '</text>'
+            : "");
+
+        if (has2RS) {
+          frontClosureSvg =
+            '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="url(#' + gRubber + ')" stroke="#111827" stroke-width="1.1" />' +
+            '<circle cx="' + cx + '" cy="' + cy + '" r="' + (rInnerRace + 3) + '" fill="none" stroke="#6B7280" stroke-width="1.1" />' +
+            sealLabelsSvg;
+        } else {
+          frontClosureSvg =
+            '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="url(#' + gShield + ')" stroke="' + steelStroke + '" stroke-width="1.1" />' +
+            '<circle cx="' + cx + '" cy="' + cy + '" r="' + (rOuterRace - 3) + '" fill="none" stroke="#8E9AA8" stroke-width="0.95" />' +
+            sealLabelsSvg;
+        }
       }
 
       frontViewSvg +=
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.2" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
+        shadowFront(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#' + gOuterRing + ')" stroke="' + steelStroke + '" stroke-width="1.2" />' +
+        outerHighlightArc(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="url(#' + gRaceway + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
         ballsSvg +
         frontClosureSvg +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1.2" />';
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#' + gInnerRing + ')" stroke="' + steelStroke + '" stroke-width="1.1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="url(#' + gBore + ')" stroke="' + steelStroke + '" stroke-width="1.2" />';
 
       let sideClosureSvg = "";
       if (has2RS) {
         sideClosureSvg =
-          '<rect x="' + (sLeft + 4) + '" y="' + (cy - rOuterRace) + '" width="4" height="' + (rOuterRace - rInnerRace) + '" fill="' + pal.rubberFill + '" stroke="' + pal.rubberStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
-          '<rect x="' + (sRight - 8) + '" y="' + (cy - rOuterRace) + '" width="4" height="' + (rOuterRace - rInnerRace) + '" fill="' + pal.rubberFill + '" stroke="' + pal.rubberStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
-          '<rect x="' + (sLeft + 4) + '" y="' + (cy + rInnerRace) + '" width="4" height="' + (rOuterRace - rInnerRace) + '" fill="' + pal.rubberFill + '" stroke="' + pal.rubberStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
-          '<rect x="' + (sRight - 8) + '" y="' + (cy + rInnerRace) + '" width="4" height="' + (rOuterRace - rInnerRace) + '" fill="' + pal.rubberFill + '" stroke="' + pal.rubberStroke + '" stroke-width="0.9" stroke-linejoin="miter" />';
+          '<rect x="' + (sLeft + 4) + '" y="' + (cy - rOuterRace) + '" width="4" height="' + (rOuterRace - rInnerRace) + '" fill="url(#' + gRubber + ')" stroke="#111827" stroke-width="0.9" stroke-linejoin="miter" />' +
+          '<rect x="' + (sRight - 8) + '" y="' + (cy - rOuterRace) + '" width="4" height="' + (rOuterRace - rInnerRace) + '" fill="url(#' + gRubber + ')" stroke="#111827" stroke-width="0.9" stroke-linejoin="miter" />' +
+          '<rect x="' + (sLeft + 4) + '" y="' + (cy + rInnerRace) + '" width="4" height="' + (rOuterRace - rInnerRace) + '" fill="url(#' + gRubber + ')" stroke="#111827" stroke-width="0.9" stroke-linejoin="miter" />' +
+          '<rect x="' + (sRight - 8) + '" y="' + (cy + rInnerRace) + '" width="4" height="' + (rOuterRace - rInnerRace) + '" fill="url(#' + gRubber + ')" stroke="#111827" stroke-width="0.9" stroke-linejoin="miter" />';
       } else if (has2Z) {
         sideClosureSvg =
-          '<rect x="' + (sLeft + 4) + '" y="' + (cy - rOuterRace) + '" width="3.5" height="' + (rOuterRace - rInnerRace) + '" fill="' + pal.steelShade + '" stroke="' + pal.steelStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
-          '<rect x="' + (sRight - 7.5) + '" y="' + (cy - rOuterRace) + '" width="3.5" height="' + (rOuterRace - rInnerRace) + '" fill="' + pal.steelShade + '" stroke="' + pal.steelStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
-          '<rect x="' + (sLeft + 4) + '" y="' + (cy + rInnerRace) + '" width="3.5" height="' + (rOuterRace - rInnerRace) + '" fill="' + pal.steelShade + '" stroke="' + pal.steelStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
-          '<rect x="' + (sRight - 7.5) + '" y="' + (cy + rInnerRace) + '" width="3.5" height="' + (rOuterRace - rInnerRace) + '" fill="' + pal.steelShade + '" stroke="' + pal.steelStroke + '" stroke-width="0.9" stroke-linejoin="miter" />';
+          '<rect x="' + (sLeft + 4) + '" y="' + (cy - rOuterRace) + '" width="3.5" height="' + (rOuterRace - rInnerRace) + '" fill="url(#' + gShield + ')" stroke="' + steelStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
+          '<rect x="' + (sRight - 7.5) + '" y="' + (cy - rOuterRace) + '" width="3.5" height="' + (rOuterRace - rInnerRace) + '" fill="url(#' + gShield + ')" stroke="' + steelStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
+          '<rect x="' + (sLeft + 4) + '" y="' + (cy + rInnerRace) + '" width="3.5" height="' + (rOuterRace - rInnerRace) + '" fill="url(#' + gShield + ')" stroke="' + steelStroke + '" stroke-width="0.9" stroke-linejoin="miter" />' +
+          '<rect x="' + (sRight - 7.5) + '" y="' + (cy + rInnerRace) + '" width="3.5" height="' + (rOuterRace - rInnerRace) + '" fill="url(#' + gShield + ')" stroke="' + steelStroke + '" stroke-width="0.9" stroke-linejoin="miter" />';
       }
 
       sideViewSvg +=
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut * 2) + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + rOuterRace) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - rInnerRace) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + rBore) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + pal.steelDark + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
-        '<circle cx="' + sx + '" cy="' + (cy - rBallCenter) + '" r="' + rBall + '" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
-        '<circle cx="' + sx + '" cy="' + (cy + rBallCenter) + '" r="' + rBall + '" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
+        shadowSide(rOut) +
+        sideBacking(rOut, rBore) +
+        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + rOuterRace) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy - rInnerRace) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + rBore) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + centerLineCol + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
+        '<circle cx="' + sx + '" cy="' + (cy - rBallCenter) + '" r="' + rBall + '" fill="url(#' + gBall + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
+        '<circle cx="' + sx + '" cy="' + (cy + rBallCenter) + '" r="' + rBall + '" fill="url(#' + gBall + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
         sideClosureSvg;
     } else if (family === "cylindrical") {
       let cylFrontRollers = "";
@@ -448,29 +581,32 @@ window.QS_MODULES.push({
         cylFrontRollers +=
           '<rect x="' + (cx - 7) + '" y="' + (cy - rBallCenter - 7) + '" width="14" height="14" rx="2.5" ' +
             'transform="rotate(' + deg + ' ' + cx + ' ' + cy + ')" ' +
-            'fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />';
+            'fill="url(#' + gRollerH + ')" stroke="' + steelStroke + '" stroke-width="1" stroke-linejoin="miter" />';
       }
       frontViewSvg +=
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.2" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
+        shadowFront(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#' + gOuterRing + ')" stroke="' + steelStroke + '" stroke-width="1.2" />' +
+        outerHighlightArc(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="url(#' + gRaceway + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
         cylFrontRollers +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1.2" />';
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#' + gInnerRing + ')" stroke="' + steelStroke + '" stroke-width="1.1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="url(#' + gBore + ')" stroke="' + steelStroke + '" stroke-width="1.2" />';
 
       const cylLen = 24;
       const cylX = sx - 12;
       const cylH = rOuterRace - rInnerRace;
       sideViewSvg +=
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut * 2) + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + rOuterRace) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - rInnerRace) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + rBore) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + pal.steelDark + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
-        '<rect x="' + cylX + '" y="' + (cy - rOuterRace) + '" width="' + cylLen + '" height="' + cylH + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + cylX + '" y="' + (cy + rInnerRace) + '" width="' + cylLen + '" height="' + cylH + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<line x1="' + cylX + '" y1="' + (cy - rBallCenter) + '" x2="' + (cylX + cylLen) + '" y2="' + (cy - rBallCenter) + '" stroke="' + pal.steelDark + '" stroke-width="0.8" />' +
-        '<line x1="' + cylX + '" y1="' + (cy + rBallCenter) + '" x2="' + (cylX + cylLen) + '" y2="' + (cy + rBallCenter) + '" stroke="' + pal.steelDark + '" stroke-width="0.8" />';
+        shadowSide(rOut) +
+        sideBacking(rOut, rBore) +
+        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + rOuterRace) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy - rInnerRace) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + rBore) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + centerLineCol + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
+        '<rect x="' + cylX + '" y="' + (cy - rOuterRace) + '" width="' + cylLen + '" height="' + cylH + '" fill="url(#' + gRollerV + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + cylX + '" y="' + (cy + rInnerRace) + '" width="' + cylLen + '" height="' + cylH + '" fill="url(#' + gRollerV + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<line x1="' + cylX + '" y1="' + (cy - rBallCenter) + '" x2="' + (cylX + cylLen) + '" y2="' + (cy - rBallCenter) + '" stroke="' + steelStroke + '" stroke-width="0.7" opacity="0.55" />' +
+        '<line x1="' + cylX + '" y1="' + (cy + rBallCenter) + '" x2="' + (cylX + cylLen) + '" y2="' + (cy + rBallCenter) + '" stroke="' + steelStroke + '" stroke-width="0.7" opacity="0.55" />';
     } else if (family === "tapered") {
       let tapFrontRollers = "";
       for (let k = 0; k < 10; k++) {
@@ -483,14 +619,16 @@ window.QS_MODULES.push({
         ].join(" ");
         tapFrontRollers +=
           '<polygon points="' + pts + '" transform="rotate(' + deg + ' ' + cx + ' ' + cy + ')" ' +
-            'fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />';
+            'fill="url(#' + gRollerH + ')" stroke="' + steelStroke + '" stroke-width="1" stroke-linejoin="miter" />';
       }
       frontViewSvg +=
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.2" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
+        shadowFront(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#' + gOuterRing + ')" stroke="' + steelStroke + '" stroke-width="1.2" />' +
+        outerHighlightArc(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="url(#' + gRaceway + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
         tapFrontRollers +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1.2" />';
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#' + gInnerRing + ')" stroke="' + steelStroke + '" stroke-width="1.1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="url(#' + gBore + ')" stroke="' + steelStroke + '" stroke-width="1.2" />';
 
       const cupTopPts = sLeft + "," + (cy - rOut) + " " + sRight + "," + (cy - rOut) + " " + sRight + "," + (cy - rOuterRace + 4) + " " + sLeft + "," + (cy - rOuterRace - 5);
       const cupBotPts = sLeft + "," + (cy + rOut) + " " + sRight + "," + (cy + rOut) + " " + sRight + "," + (cy + rOuterRace - 4) + " " + sLeft + "," + (cy + rOuterRace + 5);
@@ -502,14 +640,15 @@ window.QS_MODULES.push({
       const rollerBotPts = (sLeft + 6) + "," + (cy + rOuterRace + 4) + " " + (sRight - 6) + "," + (cy + rOuterRace - 3) + " " + (sRight - 6) + "," + (cy + rInnerRace + 3) + " " + (sLeft + 6) + "," + (cy + rInnerRace + 6);
 
       sideViewSvg +=
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut * 2) + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
-        '<polygon points="' + cupTopPts + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<polygon points="' + cupBotPts + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<polygon points="' + coneTopPts + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<polygon points="' + coneBotPts + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + pal.steelDark + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
-        '<polygon points="' + rollerTopPts + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<polygon points="' + rollerBotPts + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />';
+        shadowSide(rOut) +
+        sideBacking(rOut, rBore) +
+        '<polygon points="' + cupTopPts + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<polygon points="' + cupBotPts + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<polygon points="' + coneTopPts + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<polygon points="' + coneBotPts + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + centerLineCol + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
+        '<polygon points="' + rollerTopPts + '" fill="url(#' + gRollerV + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<polygon points="' + rollerBotPts + '" fill="url(#' + gRollerV + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />';
     } else if (family === "spherical") {
       let sphFrontRollers = "";
       for (let k = 0; k < 10; k++) {
@@ -517,14 +656,16 @@ window.QS_MODULES.push({
         sphFrontRollers +=
           '<ellipse cx="' + cx + '" cy="' + (cy - rBallCenter) + '" rx="6.5" ry="10.5" ' +
             'transform="rotate(' + deg + ' ' + cx + ' ' + cy + ')" ' +
-            'fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />';
+            'fill="url(#' + gRollerH + ')" stroke="' + steelStroke + '" stroke-width="1" />';
       }
       frontViewSvg +=
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.2" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
+        shadowFront(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#' + gOuterRing + ')" stroke="' + steelStroke + '" stroke-width="1.2" />' +
+        outerHighlightArc(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="url(#' + gRaceway + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
         sphFrontRollers +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1.2" />';
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#' + gInnerRing + ')" stroke="' + steelStroke + '" stroke-width="1.1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="url(#' + gBore + ')" stroke="' + steelStroke + '" stroke-width="1.2" />';
 
       const sphOuterTop =
         'M ' + sLeft + ' ' + (cy - rOut) +
@@ -557,16 +698,17 @@ window.QS_MODULES.push({
       const ty = cy - rBallCenter;
       const by = cy + rBallCenter;
       sideViewSvg +=
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut * 2) + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
-        '<path d="' + sphOuterTop + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<path d="' + sphOuterBot + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<path d="' + sphInnerTop + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<path d="' + sphInnerBot + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + pal.steelDark + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
-        '<ellipse cx="' + lx + '" cy="' + ty + '" rx="7" ry="10.5" transform="rotate(-14 ' + lx + ' ' + ty + ')" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
-        '<ellipse cx="' + rx + '" cy="' + ty + '" rx="7" ry="10.5" transform="rotate(14 ' + rx + ' ' + ty + ')" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
-        '<ellipse cx="' + lx + '" cy="' + by + '" rx="7" ry="10.5" transform="rotate(14 ' + lx + ' ' + by + ')" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
-        '<ellipse cx="' + rx + '" cy="' + by + '" rx="7" ry="10.5" transform="rotate(-14 ' + rx + ' ' + by + ')" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />';
+        shadowSide(rOut) +
+        sideBacking(rOut, rBore) +
+        '<path d="' + sphOuterTop + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<path d="' + sphOuterBot + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<path d="' + sphInnerTop + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<path d="' + sphInnerBot + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + centerLineCol + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
+        '<ellipse cx="' + lx + '" cy="' + ty + '" rx="7" ry="10.5" transform="rotate(-14 ' + lx + ' ' + ty + ')" fill="url(#' + gRollerH + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
+        '<ellipse cx="' + rx + '" cy="' + ty + '" rx="7" ry="10.5" transform="rotate(14 ' + rx + ' ' + ty + ')" fill="url(#' + gRollerH + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
+        '<ellipse cx="' + lx + '" cy="' + by + '" rx="7" ry="10.5" transform="rotate(14 ' + lx + ' ' + by + ')" fill="url(#' + gRollerH + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
+        '<ellipse cx="' + rx + '" cy="' + by + '" rx="7" ry="10.5" transform="rotate(-14 ' + rx + ' ' + by + ')" fill="url(#' + gRollerH + ')" stroke="' + steelStroke + '" stroke-width="1" />';
     } else if (family === "thrust") {
       let thrBalls = "";
       for (let k = 0; k < 10; k++) {
@@ -574,29 +716,32 @@ window.QS_MODULES.push({
         const bx = (cx + rBallCenter * Math.cos(ang)).toFixed(2);
         const by = (cy + rBallCenter * Math.sin(ang)).toFixed(2);
         thrBalls +=
-          '<circle cx="' + bx + '" cy="' + by + '" r="8.5" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />';
+          '<circle cx="' + bx + '" cy="' + by + '" r="8.5" fill="url(#' + gBall + ')" stroke="' + steelStroke + '" stroke-width="1" />';
       }
       frontViewSvg +=
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.2" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + (rOut - 9) + '" fill="none" stroke="' + pal.steelDark + '" stroke-width="0.9" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBallCenter + '" fill="none" stroke="' + pal.steelDark + '" stroke-width="0.9" stroke-dasharray="3 3" />' +
+        shadowFront(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#' + gOuterRing + ')" stroke="' + steelStroke + '" stroke-width="1.2" />' +
+        outerHighlightArc(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + (rOut - 9) + '" fill="none" stroke="' + steelStroke + '" stroke-width="0.9" opacity="0.65" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="url(#' + gRaceway + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBallCenter + '" fill="none" stroke="#CBD5E1" stroke-width="0.9" stroke-dasharray="3 3" opacity="0.7" />' +
         thrBalls +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1.2" />';
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#' + gInnerRing + ')" stroke="' + steelStroke + '" stroke-width="1.1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="url(#' + gBore + ')" stroke="' + steelStroke + '" stroke-width="1.2" />';
 
       const washerW = 12;
       const rWasherIn = rBore + 2;
       const washerH = rOut - rWasherIn;
       sideViewSvg +=
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut * 2) + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + washerW + '" height="' + washerH + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + rWasherIn) + '" width="' + washerW + '" height="' + washerH + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + (sRight - washerW) + '" y="' + (cy - rOut) + '" width="' + washerW + '" height="' + washerH + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + (sRight - washerW) + '" y="' + (cy + rWasherIn) + '" width="' + washerW + '" height="' + washerH + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + pal.steelDark + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
-        '<circle cx="' + sx + '" cy="' + (cy - rBallCenter) + '" r="9.5" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
-        '<circle cx="' + sx + '" cy="' + (cy + rBallCenter) + '" r="9.5" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" />';
+        shadowSide(rOut) +
+        sideBacking(rOut, rBore) +
+        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + washerW + '" height="' + washerH + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + rWasherIn) + '" width="' + washerW + '" height="' + washerH + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + (sRight - washerW) + '" y="' + (cy - rOut) + '" width="' + washerW + '" height="' + washerH + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + (sRight - washerW) + '" y="' + (cy + rWasherIn) + '" width="' + washerW + '" height="' + washerH + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + centerLineCol + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
+        '<circle cx="' + sx + '" cy="' + (cy - rBallCenter) + '" r="9.5" fill="url(#' + gBall + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
+        '<circle cx="' + sx + '" cy="' + (cy + rBallCenter) + '" r="9.5" fill="url(#' + gBall + ')" stroke="' + steelStroke + '" stroke-width="1" />';
     } else if (family === "needle") {
       const nOut = 64;
       const nOuterRace = 55;
@@ -611,42 +756,48 @@ window.QS_MODULES.push({
         const nx = (cx + nNeedleCenter * Math.cos(ang)).toFixed(2);
         const ny = (cy + nNeedleCenter * Math.sin(ang)).toFixed(2);
         needlesSvg +=
-          '<circle cx="' + nx + '" cy="' + ny + '" r="' + nNeedleR + '" fill="url(#brg-ball-grad)" stroke="' + pal.steelStroke + '" stroke-width="0.8" />';
+          '<circle cx="' + nx + '" cy="' + ny + '" r="' + nNeedleR + '" fill="url(#' + gBall + ')" stroke="' + steelStroke + '" stroke-width="0.8" />';
       }
       frontViewSvg +=
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + nOut + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.2" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + nOuterRace + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
+        shadowFront(nOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + nOut + '" fill="url(#' + gNeedleOuter + ')" stroke="' + steelStroke + '" stroke-width="1.2" />' +
+        outerHighlightArc(nOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + nOuterRace + '" fill="url(#' + gNeedleRaceway + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
         needlesSvg +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + nInnerRace + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + nBore + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1.2" />';
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + nInnerRace + '" fill="url(#' + gNeedleInner + ')" stroke="' + steelStroke + '" stroke-width="1.1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + nBore + '" fill="url(#' + gBore + ')" stroke="' + steelStroke + '" stroke-width="1.2" />';
 
       const nSideLen = 34;
       const nSideX = sx - 17;
       const nRollerH = 6.5;
       sideViewSvg +=
-        '<rect x="' + sLeft + '" y="' + (cy - nOut) + '" width="' + (swHalf * 2) + '" height="' + (nOut * 2) + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - nOut) + '" width="' + (swHalf * 2) + '" height="' + (nOut - nOuterRace) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + nOuterRace) + '" width="' + (swHalf * 2) + '" height="' + (nOut - nOuterRace) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - nInnerRace) + '" width="' + (swHalf * 2) + '" height="' + (nInnerRace - nBore) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + nBore) + '" width="' + (swHalf * 2) + '" height="' + (nInnerRace - nBore) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + pal.steelDark + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
-        '<rect x="' + nSideX + '" y="' + (cy - nOuterRace + 3) + '" width="' + nSideLen + '" height="' + nRollerH + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
-        '<rect x="' + nSideX + '" y="' + (cy + nInnerRace + 3) + '" width="' + nSideLen + '" height="' + nRollerH + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />';
+        shadowSide(nOut) +
+        sideBacking(nOut, nBore) +
+        '<rect x="' + sLeft + '" y="' + (cy - nOut) + '" width="' + (swHalf * 2) + '" height="' + (nOut - nOuterRace) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + nOuterRace) + '" width="' + (swHalf * 2) + '" height="' + (nOut - nOuterRace) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy - nInnerRace) + '" width="' + (swHalf * 2) + '" height="' + (nInnerRace - nBore) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + nBore) + '" width="' + (swHalf * 2) + '" height="' + (nInnerRace - nBore) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + centerLineCol + '" stroke-width="0.9" stroke-dasharray="4 3" />' +
+        '<rect x="' + nSideX + '" y="' + (cy - nOuterRace + 3) + '" width="' + nSideLen + '" height="' + nRollerH + '" fill="url(#' + gRollerV + ')" stroke="' + steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
+        '<rect x="' + nSideX + '" y="' + (cy + nInnerRace + 3) + '" width="' + nSideLen + '" height="' + nRollerH + '" fill="url(#' + gRollerV + ')" stroke="' + steelStroke + '" stroke-width="1" stroke-linejoin="miter" />';
     } else {
       /* Neutral (none): outer ring and inner ring only, no rolling elements */
       frontViewSvg +=
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.2" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" />' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1.2" />';
+        shadowFront(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOut + '" fill="url(#' + gOuterRing + ')" stroke="' + steelStroke + '" stroke-width="1.2" />' +
+        outerHighlightArc(rOut) +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuterRace + '" fill="url(#' + gRaceway + ')" stroke="' + steelStroke + '" stroke-width="1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInnerRace + '" fill="url(#' + gInnerRing + ')" stroke="' + steelStroke + '" stroke-width="1.1" />' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rBore + '" fill="url(#' + gBore + ')" stroke="' + steelStroke + '" stroke-width="1.2" />';
 
       sideViewSvg +=
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut * 2) + '" fill="#FFFFFF" stroke="' + pal.steelStroke + '" stroke-width="1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + rOuterRace) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy - rInnerRace) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<rect x="' + sLeft + '" y="' + (cy + rBore) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#brg-steel-grad)" stroke="' + pal.steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
-        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + pal.steelDark + '" stroke-width="0.9" stroke-dasharray="4 3" />';
+        shadowSide(rOut) +
+        sideBacking(rOut, rBore) +
+        '<rect x="' + sLeft + '" y="' + (cy - rOut) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + rOuterRace) + '" width="' + (swHalf * 2) + '" height="' + (rOut - rOuterRace) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy - rInnerRace) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<rect x="' + sLeft + '" y="' + (cy + rBore) + '" width="' + (swHalf * 2) + '" height="' + (rInnerRace - rBore) + '" fill="url(#' + gSteelSide + ')" stroke="' + steelStroke + '" stroke-width="1.1" stroke-linejoin="miter" />' +
+        '<line x1="' + (sLeft - 6) + '" y1="' + cy + '" x2="' + (sRight + 6) + '" y2="' + cy + '" stroke="' + centerLineCol + '" stroke-width="0.9" stroke-dasharray="4 3" />';
     }
 
     /* Separate info lines below drawing (never starting with |, omit empty values) */

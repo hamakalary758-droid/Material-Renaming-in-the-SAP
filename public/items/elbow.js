@@ -423,21 +423,15 @@ window.QS_MODULES.push({
     const hasMat = Boolean(material);
     const matPalette = (material && mod.materialColors && mod.materialColors[material]) ? mod.materialColors[material] : null;
     const useShine = Boolean(matPalette && matPalette.shine);
-    const fillColor = matPalette
-      ? (useShine ? "url(#elbow-ss-grad)" : matPalette.fill)
-      : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const cFill = matPalette ? matPalette.fill : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const cShade = matPalette ? matPalette.shade : (hasMat ? "#94A3B8" : "#CBD5E1");
+    const cMidHi = useShine ? "#FFFFFF" : cFill;
     const strokeColor = matPalette ? matPalette.stroke : (hasMat ? "#475569" : "#94A3B8");
     const detailColor = matPalette ? matPalette.detail : (hasMat ? "#64748B" : "#94A3B8");
     const dotColor = matPalette ? matPalette.dot : (hasMat ? "#D5DCE3" : "#EEF2F6");
 
-    const defsSvg = useShine
-      ? '<defs><linearGradient id="elbow-ss-grad" x1="0%" y1="0%" x2="100%" y2="100%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="40%" stop-color="#FFFFFF" />' +
-          '<stop offset="72%" stop-color="#CBD5E1" />' +
-          '<stop offset="100%" stop-color="#F1F5F9" />' +
-        '</linearGradient></defs>'
-      : "";
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "elbow-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
 
     const topText = clean(shortNameText);
     const topLines = topText ? wrapLines(topText, 36) : ["NEW PIPE ELBOW"];
@@ -468,17 +462,24 @@ window.QS_MODULES.push({
     const Rm = 63; /* Midline radius */
     const halfW = 21;
 
-    /* Helper to draw weld bevel (W) or thread ridges (THD) at any mouth center (mx, my)
+    /* Helper to draw weld bevel (W) or threaded collar + slanted ridges (THD) at any mouth center (mx, my)
        with unit inward axis (tx, ty) and unit perpendicular cross-pipe axis (nx, ny) */
-    const buildEndFeature = function (endCode, mx, my, tx, ty, nx, ny) {
+    const buildEndFeature = function (endCode, mx, my, tx, ty, nx, ny, gradId) {
       if (endCode === "W") {
-        /* Plain bevel weld end: clean bevel notch at mouth + inner chamfer line */
+        /* Machined weld bevel: thin light ring + thin dark ring + chamfered edges */
         const bx = mx + tx * 5;
         const by = my + ty * 5;
+        const lx = mx + tx * 2.4;
+        const ly = my + ty * 2.4;
+        const dx = mx + tx * 4.8;
+        const dy = my + ty * 4.8;
         return (
-          '<line x1="' + (bx - nx * (halfW - 1)).toFixed(1) + '" y1="' + (by - ny * (halfW - 1)).toFixed(1) +
-            '" x2="' + (bx + nx * (halfW - 1)).toFixed(1) + '" y2="' + (by + ny * (halfW - 1)).toFixed(1) +
-            '" stroke="' + detailColor + '" stroke-width="1.1" />' +
+          '<line x1="' + (lx - nx * (halfW - 1.5)).toFixed(1) + '" y1="' + (ly - ny * (halfW - 1.5)).toFixed(1) +
+            '" x2="' + (lx + nx * (halfW - 1.5)).toFixed(1) + '" y2="' + (ly + ny * (halfW - 1.5)).toFixed(1) +
+            '" stroke="#FFFFFF" stroke-width="1.3" opacity="0.72" />' +
+          '<line x1="' + (dx - nx * (halfW - 1)).toFixed(1) + '" y1="' + (dy - ny * (halfW - 1)).toFixed(1) +
+            '" x2="' + (dx + nx * (halfW - 1)).toFixed(1) + '" y2="' + (dy + ny * (halfW - 1)).toFixed(1) +
+            '" stroke="' + detailColor + '" stroke-width="1.2" />' +
           '<line x1="' + (mx - nx * halfW).toFixed(1) + '" y1="' + (my - ny * halfW).toFixed(1) +
             '" x2="' + (bx - nx * (halfW - 4)).toFixed(1) + '" y2="' + (by - ny * (halfW - 4)).toFixed(1) +
             '" stroke="' + strokeColor + '" stroke-width="1" />' +
@@ -488,18 +489,39 @@ window.QS_MODULES.push({
         );
       }
       if (endCode === "THD") {
-        /* Threaded end: 5 crisp parallel thread groove lines across neck */
+        /* Threaded end: slightly thicker shaded collar with crisp slanted thread lines */
+        const cHalf = halfW + 2.5;
+        const cLen = 18;
+        const p1x = mx - nx * cHalf;
+        const p1y = my - ny * cHalf;
+        const p2x = mx + tx * cLen - nx * cHalf;
+        const p2y = my + ty * cLen - ny * cHalf;
+        const p3x = mx + tx * cLen + nx * cHalf;
+        const p3y = my + ty * cLen + ny * cHalf;
+        const p4x = mx + nx * cHalf;
+        const p4y = my + ny * cHalf;
+        const collarPath =
+          "M " + p1x.toFixed(1) + " " + p1y.toFixed(1) +
+          " L " + p2x.toFixed(1) + " " + p2y.toFixed(1) +
+          " L " + p3x.toFixed(1) + " " + p3y.toFixed(1) +
+          " L " + p4x.toFixed(1) + " " + p4y.toFixed(1) + " Z";
         const ridges = [];
-        for (let t = 4; t <= 20; t += 4) {
+        for (let t = 3.5; t <= 15.5; t += 3) {
           const rx = mx + tx * t;
           const ry = my + ty * t;
           ridges.push(
-            '<line x1="' + (rx - nx * halfW).toFixed(1) + '" y1="' + (ry - ny * halfW).toFixed(1) +
-              '" x2="' + (rx + nx * halfW).toFixed(1) + '" y2="' + (ry + ny * halfW).toFixed(1) +
-              '" stroke="' + strokeColor + '" stroke-width="1.2" />'
+            '<line x1="' + (rx + tx * 1.1 - nx * (cHalf - 1.2)).toFixed(1) + '" y1="' + (ry + ty * 1.1 - ny * (cHalf - 1.2)).toFixed(1) +
+              '" x2="' + (rx - tx * 1.1 + nx * (cHalf - 1.2)).toFixed(1) + '" y2="' + (ry - ty * 1.1 + ny * (cHalf - 1.2)).toFixed(1) +
+              '" stroke="' + strokeColor + '" stroke-width="1.15" />'
           );
         }
-        return ridges.join("");
+        return (
+          '<path d="' + collarPath + '" fill="url(#' + gradId + ')" stroke="' + strokeColor + '" stroke-width="1.1" stroke-linejoin="round" />' +
+          '<line x1="' + (p1x + tx * 2).toFixed(1) + '" y1="' + (p1y + ty * 2).toFixed(1) +
+            '" x2="' + (p2x - tx * 1).toFixed(1) + '" y2="' + (p2y - ty * 1).toFixed(1) +
+            '" stroke="#FFFFFF" stroke-width="1.1" opacity="' + (useShine ? "0.65" : "0.42") + '" />' +
+          ridges.join("")
+        );
       }
       return (
         '<line x1="' + (mx + tx * 10 - nx * halfW).toFixed(1) + '" y1="' + (my + ty * 10 - ny * halfW).toFixed(1) +
@@ -508,7 +530,27 @@ window.QS_MODULES.push({
       );
     };
 
+    const cylStops =
+      '<stop offset="0%" stop-color="' + cShade + '" />' +
+      '<stop offset="28%" stop-color="' + cFill + '" />' +
+      '<stop offset="48%" stop-color="' + cMidHi + '" />' +
+      '<stop offset="72%" stop-color="' + cFill + '" />' +
+      '<stop offset="100%" stop-color="' + cShade + '" />';
+
+    const bendStops =
+      '<stop offset="50%" stop-color="' + cShade + '" />' +
+      '<stop offset="64%" stop-color="' + cFill + '" />' +
+      '<stop offset="74%" stop-color="' + cMidHi + '" />' +
+      '<stop offset="86%" stop-color="' + cFill + '" />' +
+      '<stop offset="100%" stop-color="' + cShade + '" />';
+
     let bodyPath = "";
+    let leg1Grad = "";
+    let leg2Grad = "";
+    let leg1FillSvg = "";
+    let bendFillSvg = "";
+    let leg2FillSvg = "";
+    let highlightPath = "";
     let centerPath = "";
     let end1Features = "";
     let end2Features = "";
@@ -518,6 +560,9 @@ window.QS_MODULES.push({
     let end2LabelX = 244;
     let end2LabelY = cy - 42;
     let bottomAnchorY = cy + Ro;
+    let shadowCx = cx - 8;
+
+    const hiR = Ri + 10;
 
     if (is45) {
       /* 45-degree bend: left horizontal mouth at x=114, sweeping 45° up-right */
@@ -547,6 +592,40 @@ window.QS_MODULES.push({
         " A " + Ri + " " + Ri + " 0 0 1 " + cx + " " + (cy + Ri) +
         " L " + xStart + " " + (cy + Ri) + " Z";
 
+      leg1Grad =
+        '<linearGradient id="' + uid + '-l1" gradientUnits="userSpaceOnUse" x1="' + xStart + '" y1="' + (cy + Ri) + '" x2="' + xStart + '" y2="' + (cy + Ro) + '">' +
+          cylStops +
+        '</linearGradient>';
+      leg2Grad =
+        '<linearGradient id="' + uid + '-l2" gradientUnits="userSpaceOnUse" x1="' + inEndX.toFixed(1) + '" y1="' + inEndY.toFixed(1) + '" x2="' + outEndX.toFixed(1) + '" y2="' + outEndY.toFixed(1) + '">' +
+          cylStops +
+        '</linearGradient>';
+
+      leg1FillSvg =
+        '<rect x="' + (xStart - 2) + '" y="' + (cy + Ri - 2) + '" width="' + (cx - xStart + 2.6) + '" height="' + (Ro - Ri + 4) + '" fill="url(#' + uid + '-l1)" />';
+
+      const bendPath =
+        "M " + (cx - 0.5) + " " + (cy + Ro + 1) +
+        " A " + Ro + " " + Ro + " 0 0 0 " + (outEndX + 0.5).toFixed(1) + " " + (outEndY + 0.5).toFixed(1) +
+        " L " + (inEndX - 0.5).toFixed(1) + " " + (inEndY - 0.5).toFixed(1) +
+        " A " + Ri + " " + Ri + " 0 0 1 " + (cx - 0.5) + " " + (cy + Ri - 1) + " Z";
+      bendFillSvg = '<path d="' + bendPath + '" fill="url(#' + uid + '-bend)" />';
+
+      const leg2Path =
+        "M " + (outEndX - 0.4 * c45).toFixed(1) + " " + (outEndY + 0.4 * c45).toFixed(1) +
+        " L " + (m2OutX + 2).toFixed(1) + " " + (m2OutY - 2).toFixed(1) +
+        " L " + (m2InX - 2).toFixed(1) + " " + (m2InY - 2).toFixed(1) +
+        " L " + (inEndX - 0.4 * c45).toFixed(1) + " " + (inEndY + 0.4 * c45).toFixed(1) + " Z";
+      leg2FillSvg = '<path d="' + leg2Path + '" fill="url(#' + uid + '-l2)" />';
+
+      const hiBendX = cx + hiR * c45;
+      const hiBendY = cy + hiR * c45;
+      highlightPath =
+        "M " + xStart + " " + (cy + hiR) +
+        " L " + cx + " " + (cy + hiR) +
+        " A " + hiR + " " + hiR + " 0 0 0 " + hiBendX.toFixed(1) + " " + hiBendY.toFixed(1) +
+        " L " + (hiBendX + stub2 * c45).toFixed(1) + " " + (hiBendY - stub2 * c45).toFixed(1);
+
       const midBendX = cx + Rm * c45;
       const midBendY = cy + Rm * c45;
       const m2MidX = (m2OutX + m2InX) / 2;
@@ -558,8 +637,8 @@ window.QS_MODULES.push({
         " A " + Rm + " " + Rm + " 0 0 0 " + midBendX.toFixed(1) + " " + midBendY.toFixed(1) +
         " L " + (m2MidX + 5 * c45).toFixed(1) + " " + (m2MidY - 5 * c45).toFixed(1);
 
-      end1Features = buildEndFeature(leftEnd, xStart, cy + Rm, 1, 0, 0, 1);
-      end2Features = buildEndFeature(rightEnd, m2MidX, m2MidY, -c45, c45, c45, c45);
+      end1Features = buildEndFeature(leftEnd, xStart, cy + Rm, 1, 0, 0, 1, uid + "-l1");
+      end2Features = buildEndFeature(rightEnd, m2MidX, m2MidY, -c45, c45, c45, c45, uid + "-l2");
 
       /* Angle arc guide for 45° */
       angleGuideSvg =
@@ -572,6 +651,7 @@ window.QS_MODULES.push({
       end2LabelX = m2MidX + 8;
       end2LabelY = m2InY - 14;
       bottomAnchorY = cy + Ro;
+      shadowCx = cx + 8;
     } else {
       /* 90-degree bend: left horizontal mouth at x=116, vertical top mouth at y=cy-42 */
       const stub1 = 44;
@@ -589,14 +669,42 @@ window.QS_MODULES.push({
         " A " + Ri + " " + Ri + " 0 0 1 " + cx + " " + (cy + Ri) +
         " L " + xStart + " " + (cy + Ri) + " Z";
 
+      leg1Grad =
+        '<linearGradient id="' + uid + '-l1" gradientUnits="userSpaceOnUse" x1="' + xStart + '" y1="' + (cy + Ri) + '" x2="' + xStart + '" y2="' + (cy + Ro) + '">' +
+          cylStops +
+        '</linearGradient>';
+      leg2Grad =
+        '<linearGradient id="' + uid + '-l2" gradientUnits="userSpaceOnUse" x1="' + (cx + Ri) + '" y1="' + yTop + '" x2="' + (cx + Ro) + '" y2="' + yTop + '">' +
+          cylStops +
+        '</linearGradient>';
+
+      leg1FillSvg =
+        '<rect x="' + (xStart - 2) + '" y="' + (cy + Ri - 2) + '" width="' + (cx - xStart + 2.6) + '" height="' + (Ro - Ri + 4) + '" fill="url(#' + uid + '-l1)" />';
+
+      const bendPath =
+        "M " + (cx - 0.5) + " " + (cy + Ro + 1) +
+        " A " + Ro + " " + Ro + " 0 0 0 " + (cx + Ro + 1) + " " + (cy - 0.5) +
+        " L " + (cx + Ri - 1) + " " + (cy - 0.5) +
+        " A " + Ri + " " + Ri + " 0 0 1 " + (cx - 0.5) + " " + (cy + Ri - 1) + " Z";
+      bendFillSvg = '<path d="' + bendPath + '" fill="url(#' + uid + '-bend)" />';
+
+      leg2FillSvg =
+        '<rect x="' + (cx + Ri - 2) + '" y="' + (yTop - 2) + '" width="' + (Ro - Ri + 4) + '" height="' + (cy - yTop + 2.6) + '" fill="url(#' + uid + '-l2)" />';
+
+      highlightPath =
+        "M " + xStart + " " + (cy + hiR) +
+        " L " + cx + " " + (cy + hiR) +
+        " A " + hiR + " " + hiR + " 0 0 0 " + (cx + hiR) + " " + cy +
+        " L " + (cx + hiR) + " " + yTop;
+
       centerPath =
         "M " + (xStart - 6) + " " + (cy + Rm) +
         " L " + cx + " " + (cy + Rm) +
         " A " + Rm + " " + Rm + " 0 0 0 " + (cx + Rm) + " " + cy +
         " L " + (cx + Rm) + " " + (yTop - 6);
 
-      end1Features = buildEndFeature(leftEnd, xStart, cy + Rm, 1, 0, 0, 1);
-      end2Features = buildEndFeature(rightEnd, cx + Rm, yTop, 0, 1, 1, 0);
+      end1Features = buildEndFeature(leftEnd, xStart, cy + Rm, 1, 0, 0, 1, uid + "-l1");
+      end2Features = buildEndFeature(rightEnd, cx + Rm, yTop, 0, 1, 1, 0, uid + "-l2");
 
       const angleLbl = angle ? (angle + " deg") : "Angle: ?";
       const angleCol = angle ? reqColor : missingColor;
@@ -610,7 +718,18 @@ window.QS_MODULES.push({
       end2LabelX = cx + Rm;
       end2LabelY = yTop - 12;
       bottomAnchorY = cy + Ro;
+      shadowCx = cx - 4;
     }
+
+    const defsSvg =
+      '<defs>' +
+        leg1Grad +
+        leg2Grad +
+        '<radialGradient id="' + uid + '-bend" gradientUnits="userSpaceOnUse" cx="' + cx + '" cy="' + cy + '" r="' + Ro + '">' +
+          bendStops +
+        '</radialGradient>' +
+        '<clipPath id="' + uid + '-clip"><path d="' + bodyPath + '" /></clipPath>' +
+      '</defs>';
 
     const side1Text = (leftEnd || "?") + (leftSize ? (" " + leftSize) : "");
     const side2Text = (rightEnd || "?") + (rightSize ? (" " + rightSize) : "");
@@ -646,8 +765,15 @@ window.QS_MODULES.push({
         defsSvg +
         '<rect x="0" y="0" width="380" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
+        '<ellipse cx="' + shadowCx + '" cy="' + (bottomAnchorY + 6) + '" rx="62" ry="4" fill="#0f172a" opacity="0.12" />' +
         '<g class="bolt-shape-animate">' +
-          '<path d="' + bodyPath + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
+          '<g clip-path="url(#' + uid + '-clip)">' +
+            leg1FillSvg +
+            bendFillSvg +
+            leg2FillSvg +
+            '<path d="' + highlightPath + '" fill="none" stroke="#FFFFFF" stroke-width="' + (useShine ? "3.6" : "2.4") + '" stroke-linecap="round" opacity="' + (useShine ? "0.72" : "0.46") + '" />' +
+          '</g>' +
+          '<path d="' + bodyPath + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
           '<path d="' + centerPath + '" fill="none" stroke="' + detailColor + '" stroke-width="1" stroke-dasharray="5 3" />' +
           end1Features +
           end2Features +

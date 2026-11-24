@@ -388,21 +388,15 @@ window.QS_MODULES.push({
     const hasMat = Boolean(material);
     const matPalette = (material && mod.materialColors && mod.materialColors[material]) ? mod.materialColors[material] : null;
     const useShine = Boolean(matPalette && matPalette.shine);
-    const fillColor = matPalette
-      ? (useShine ? "url(#reducer-ss-grad)" : matPalette.fill)
-      : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const fillColor = matPalette ? matPalette.fill : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const shadeColor = matPalette ? matPalette.shade : (hasMat ? "#BCC7D2" : "#CBD5E1");
+    const midColor = useShine ? "#FFFFFF" : fillColor;
     const strokeColor = matPalette ? matPalette.stroke : (hasMat ? "#475569" : "#94A3B8");
     const detailColor = matPalette ? matPalette.detail : (hasMat ? "#64748B" : "#94A3B8");
     const dotColor = matPalette ? matPalette.dot : (hasMat ? "#D5DCE3" : "#EEF2F6");
 
-    const defsSvg = useShine
-      ? '<defs><linearGradient id="reducer-ss-grad" x1="0%" y1="0%" x2="0%" y2="100%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="35%" stop-color="#FFFFFF" />' +
-          '<stop offset="70%" stop-color="#CBD5E1" />' +
-          '<stop offset="100%" stop-color="#F1F5F9" />' +
-        '</linearGradient></defs>'
-      : "";
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "reducer-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
 
     const topText = clean(shortNameText);
     const topLines = topText ? wrapLines(topText, 36) : ["NEW PIPE REDUCER"];
@@ -441,6 +435,29 @@ window.QS_MODULES.push({
     const rightTop = cySmall - rSmall;
     const rightBot = cySmall + rSmall;
 
+    const taperMidTop = ((leftTop + rightTop) / 2).toFixed(1);
+    const taperMidBot = ((leftBot + rightBot) / 2).toFixed(1);
+
+    const cylStops =
+      '<stop offset="0%" stop-color="' + shadeColor + '" />' +
+      '<stop offset="28%" stop-color="' + fillColor + '" />' +
+      '<stop offset="48%" stop-color="' + midColor + '" />' +
+      '<stop offset="72%" stop-color="' + fillColor + '" />' +
+      '<stop offset="100%" stop-color="' + shadeColor + '" />';
+
+    const defsSvg =
+      '<defs>' +
+        '<linearGradient id="' + uid + '-big" gradientUnits="userSpaceOnUse" x1="0" y1="' + leftTop + '" x2="0" y2="' + leftBot + '">' +
+          cylStops +
+        '</linearGradient>' +
+        '<linearGradient id="' + uid + '-taper" gradientUnits="userSpaceOnUse" x1="0" y1="' + taperMidTop + '" x2="0" y2="' + taperMidBot + '">' +
+          cylStops +
+        '</linearGradient>' +
+        '<linearGradient id="' + uid + '-small" gradientUnits="userSpaceOnUse" x1="0" y1="' + rightTop + '" x2="0" y2="' + rightBot + '">' +
+          cylStops +
+        '</linearGradient>' +
+      '</defs>';
+
     const bodyPath =
       "M " + xLeft + " " + leftTop +
       " L " + xTaperStart + " " + leftTop +
@@ -450,6 +467,17 @@ window.QS_MODULES.push({
       " L " + xTaperEnd + " " + rightBot +
       " L " + xTaperStart + " " + leftBot +
       " L " + xLeft + " " + leftBot + " Z";
+
+    const hiW = useShine ? "3.2" : "2.2";
+    const hiOp = useShine ? "0.72" : "0.45";
+
+    const shadedPartsSvg =
+      '<rect x="' + xLeft + '" y="' + leftTop + '" width="' + (xTaperStart - xLeft) + '" height="' + (leftBot - leftTop) + '" fill="url(#' + uid + '-big)" />' +
+      '<polygon points="' + xTaperStart + ',' + leftTop + ' ' + xTaperEnd + ',' + rightTop + ' ' + xTaperEnd + ',' + rightBot + ' ' + xTaperStart + ',' + leftBot + '" fill="url(#' + uid + '-taper)" />' +
+      '<rect x="' + xTaperEnd + '" y="' + rightTop + '" width="' + (xRight - xTaperEnd) + '" height="' + (rightBot - rightTop) + '" fill="url(#' + uid + '-small)" />' +
+      '<line x1="' + (xLeft + 4) + '" y1="' + (leftTop + 7) + '" x2="' + (xTaperStart - 2) + '" y2="' + (leftTop + 7) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+      '<line x1="' + (xTaperStart + 2) + '" y1="' + (leftTop + 7) + '" x2="' + (xTaperEnd - 2) + '" y2="' + (rightTop + 5) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+      '<line x1="' + (xTaperEnd + 2) + '" y1="' + (rightTop + 5) + '" x2="' + (xRight - 4) + '" y2="' + (rightTop + 5) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />';
 
     const buildSideDetails = function (endCode, xMouth, dirInward, yCenter, halfH) {
       if (endCode === "W") {
@@ -515,13 +543,19 @@ window.QS_MODULES.push({
 
     const totalHeight = infoStartY + 18 + specLines.length * 16 + 12;
 
+    const shadowSvg = isEcc
+      ? ""
+      : '<ellipse cx="188" cy="' + (leftBot + 10) + '" rx="98" ry="4" fill="#0F172A" opacity="0.12" />';
+
     return (
       '<svg viewBox="0 0 380 ' + totalHeight + '" shape-rendering="geometricPrecision" role="img" aria-label="Pipe reducer technical drawing">' +
         defsSvg +
         '<rect x="0" y="0" width="380" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
+        shadowSvg +
         '<g class="bolt-shape-animate">' +
-          '<path d="' + bodyPath + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
+          shadedPartsSvg +
+          '<path d="' + bodyPath + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
           '<line x1="' + xTaperStart + '" y1="' + leftTop + '" x2="' + xTaperStart + '" y2="' + leftBot + '" stroke="' + detailColor + '" stroke-width="0.9" stroke-dasharray="3 3" />' +
           '<line x1="' + xTaperEnd + '" y1="' + rightTop + '" x2="' + xTaperEnd + '" y2="' + rightBot + '" stroke="' + detailColor + '" stroke-width="0.9" stroke-dasharray="3 3" />' +
           centerLinesSvg +

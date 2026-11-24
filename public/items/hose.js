@@ -227,7 +227,7 @@ window.QS_MODULES.push({
     return missing;
   },
 
-  /* Build clean live SVG drawing of hose + metal end fittings + labels */
+  /* Build realistic shaded live SVG drawing of hose + metal end fittings + labels */
   buildDrawingSvg: function (values, shortNameText) {
     const mod = this;
     const clean = function (v) {
@@ -306,31 +306,45 @@ window.QS_MODULES.push({
       );
     }).join("");
 
+    /* Unique gradient & clipPath IDs per drawing */
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "hose-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
+    const gBody = uid + "-body";
+    const gClip = uid + "-clip";
+    const gSteel = uid + "-steel";
+    const gSteelH = uid + "-steelh";
+    const gBrass = uid + "-brass";
+    const gBrassH = uid + "-brassh";
+    const gBrassDark = uid + "-brassd";
+    const gBrassDarkH = uid + "-brassdh";
+
     /* Hose arch coordinates from x=88 to x=272 */
     const yBase = 152 + yOffset;
     const yPeak = 114 + yOffset;
     const archD = "M 88 " + yBase + " C 138 " + yPeak + ", 222 " + yPeak + ", 272 " + yBase;
 
-    let bodyFill = "#E2E8F0";
-    let bodyStroke = "#94A3B8";
-    let highlightStroke = "#F1F5F9";
-    let textureSvg = "";
+    /* Construction palette (empty = WW dark rubber) */
+    let bodyHi = "#4B5563";
+    let bodyMid = "#1F2937";
+    let bodyDark = "#0B0F14";
+    let bodyStroke = "#0B0F14";
+    let stripeOpacity = "0.28";
 
-    if (construction === "WW") {
-      bodyFill = "#1E293B";
-      bodyStroke = "#0F172A";
-      highlightStroke = "#475569";
-    } else if (construction === "SB") {
-      bodyFill = "#1E293B";
-      bodyStroke = "#0F172A";
-      highlightStroke = "#475569";
+    if (construction === "SB") {
+      bodyHi = "#F1F5F9";
+      bodyMid = "#B8C2CE";
+      bodyDark = "#6B7785";
+      bodyStroke = "#475569";
+      stripeOpacity = "0.52";
     } else if (construction === "SS") {
-      bodyFill = "#CBD5E1";
-      bodyStroke = "#64748B";
-      highlightStroke = "#F1F5F9";
+      bodyHi = "#FFFFFF";
+      bodyMid = "#DCE3EA";
+      bodyDark = "#8793A1";
+      bodyStroke = "#5F6B79";
+      stripeOpacity = "0.62";
     }
 
-    /* Sample points along the cubic Bezier for crisp spiral / braid texture */
+    /* Sample points along the cubic Bezier for clipPath + spiral / braid texture */
     const bezPt = function (t) {
       const mt = 1 - t;
       const x = mt * mt * mt * 88 + 3 * mt * mt * t * 138 + 3 * mt * t * t * 222 + t * t * t * 272;
@@ -338,106 +352,186 @@ window.QS_MODULES.push({
       const dx = 3 * mt * mt * (138 - 88) + 6 * mt * t * (222 - 138) + 3 * t * t * (272 - 222);
       const dy = 3 * mt * mt * (yPeak - yBase) + 6 * mt * t * 0 + 3 * t * t * (yBase - yPeak);
       const len = Math.hypot(dx, dy) || 1;
-      return { x: x, y: y, nx: -dy / len, ny: dx / len };
+      return { x: x, y: y, tx: dx / len, ty: dy / len, nx: -dy / len, ny: dx / len };
     };
 
-    if (construction === "WW") {
+    const clipTopPts = [];
+    const clipBotPts = [];
+    const halfBodyR = 10.2;
+    for (let i = 0; i <= 24; i++) {
+      const pt = bezPt(i / 24);
+      clipTopPts.push((pt.x + pt.nx * halfBodyR).toFixed(1) + " " + (pt.y + pt.ny * halfBodyR).toFixed(1));
+      clipBotPts.unshift((pt.x - pt.nx * halfBodyR).toFixed(1) + " " + (pt.y - pt.ny * halfBodyR).toFixed(1));
+    }
+    const bodyClipPathD = "M " + clipTopPts.join(" L ") + " L " + clipBotPts.join(" L ") + " Z";
+
+    let textureSvg = "";
+    if (!construction || construction === "WW") {
       const spirals = [];
       for (let i = 1; i <= 15; i++) {
-        const t1 = (i - 0.5) / 16;
-        const t2 = (i + 0.35) / 16;
-        const p1 = bezPt(Math.max(0.02, t1));
-        const p2 = bezPt(Math.min(0.98, t2));
-        const r = 10.5;
+        const t1 = Math.max(0.01, (i - 0.5) / 16);
+        const t2 = Math.min(0.99, (i + 0.35) / 16);
+        const p1 = bezPt(t1);
+        const p2 = bezPt(t2);
+        const pm = bezPt((t1 + t2) * 0.5);
+        const r = 11.4;
+        const ax = p1.x - p1.nx * r;
+        const ay = p1.y - p1.ny * r;
+        const bx = p2.x + p2.nx * r;
+        const by = p2.y + p2.ny * r;
+        const cx = pm.x + pm.tx * 2.8;
+        const cy = pm.y + pm.ty * 2.8;
         spirals.push(
-          '<line x1="' + (p1.x - p1.nx * r).toFixed(1) + '" y1="' + (p1.y - p1.ny * r).toFixed(1) +
-          '" x2="' + (p2.x + p2.nx * r).toFixed(1) + '" y2="' + (p2.y + p2.ny * r).toFixed(1) +
-          '" stroke="#94A3B8" stroke-width="2.1" stroke-linecap="round" opacity="0.88" />'
+          '<path d="M ' + ax.toFixed(1) + " " + ay.toFixed(1) + " Q " + cx.toFixed(1) + " " + cy.toFixed(1) + " " + bx.toFixed(1) + " " + by.toFixed(1) +
+          '" fill="none" stroke="#0B0F14" stroke-width="2.1" stroke-linecap="round" opacity="0.72" />' +
+          '<path d="M ' + (ax + pm.tx * 1.6).toFixed(1) + " " + (ay + pm.ty * 1.6).toFixed(1) + " Q " + (cx + pm.tx * 1.6).toFixed(1) + " " + (cy + pm.ty * 1.6).toFixed(1) + " " + (bx + pm.tx * 1.6).toFixed(1) + " " + (by + pm.ty * 1.6).toFixed(1) +
+          '" fill="none" stroke="#FFFFFF" stroke-width="0.9" stroke-linecap="round" opacity="0.28" />'
         );
       }
       textureSvg = spirals.join("");
     } else if (construction === "SB" || construction === "SS") {
       const braids = [];
-      const braidColor = (construction === "SS") ? "#475569" : "#94A3B8";
-      const braidOpacity = (construction === "SS") ? "0.78" : "0.72";
-      for (let i = 1; i <= 16; i++) {
-        const tA = (i - 0.4) / 17;
-        const tB = (i + 0.4) / 17;
-        const pA = bezPt(Math.max(0.02, tA));
-        const pB = bezPt(Math.min(0.98, tB));
-        const r = 10;
+      const braidDark = (construction === "SS") ? "#6B7785" : "#475569";
+      const braidLight = "#FFFFFF";
+      const braidOpacity = (construction === "SS") ? "0.52" : "0.62";
+      for (let i = 1; i <= 17; i++) {
+        const tA = Math.max(0.01, (i - 0.45) / 18);
+        const tB = Math.min(0.99, (i + 0.45) / 18);
+        const pA = bezPt(tA);
+        const pB = bezPt(tB);
+        const r = 12;
         braids.push(
           '<line x1="' + (pA.x - pA.nx * r).toFixed(1) + '" y1="' + (pA.y - pA.ny * r).toFixed(1) +
           '" x2="' + (pB.x + pB.nx * r).toFixed(1) + '" y2="' + (pB.y + pB.ny * r).toFixed(1) +
-          '" stroke="' + braidColor + '" stroke-width="1.35" opacity="' + braidOpacity + '" />'
-        );
-        braids.push(
+          '" stroke="' + braidDark + '" stroke-width="1.35" opacity="' + braidOpacity + '" />' +
           '<line x1="' + (pA.x + pA.nx * r).toFixed(1) + '" y1="' + (pA.y + pA.ny * r).toFixed(1) +
           '" x2="' + (pB.x - pB.nx * r).toFixed(1) + '" y2="' + (pB.y - pB.ny * r).toFixed(1) +
-          '" stroke="' + braidColor + '" stroke-width="1.35" opacity="' + braidOpacity + '" />'
+          '" stroke="' + braidDark + '" stroke-width="1.35" opacity="' + braidOpacity + '" />' +
+          '<line x1="' + (pA.x - pA.nx * r + pA.tx * 1.4).toFixed(1) + '" y1="' + (pA.y - pA.ny * r + pA.ty * 1.4).toFixed(1) +
+          '" x2="' + (pB.x + pB.nx * r + pB.tx * 1.4).toFixed(1) + '" y2="' + (pB.y + pB.ny * r + pB.ty * 1.4).toFixed(1) +
+          '" stroke="' + braidLight + '" stroke-width="0.7" opacity="0.45" />'
         );
       }
       textureSvg = braids.join("");
     }
 
+    const defsSvg =
+      '<defs>' +
+        '<clipPath id="' + gClip + '">' +
+          '<path d="' + bodyClipPathD + '" />' +
+        '</clipPath>' +
+        '<linearGradient id="' + gBody + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="' + bodyMid + '" />' +
+          '<stop offset="20%" stop-color="' + bodyHi + '" />' +
+          '<stop offset="55%" stop-color="' + bodyMid + '" />' +
+          '<stop offset="100%" stop-color="' + bodyDark + '" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gSteel + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="#8E9AA8" />' +
+          '<stop offset="22%" stop-color="#F1F5F9" />' +
+          '<stop offset="58%" stop-color="#B4BFCB" />' +
+          '<stop offset="100%" stop-color="#5F6B79" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gSteelH + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+          '<stop offset="0%" stop-color="#8E9AA8" />' +
+          '<stop offset="28%" stop-color="#F1F5F9" />' +
+          '<stop offset="60%" stop-color="#B4BFCB" />' +
+          '<stop offset="100%" stop-color="#5F6B79" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gBrass + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="#CA8A04" />' +
+          '<stop offset="20%" stop-color="#FEF08A" />' +
+          '<stop offset="55%" stop-color="#EAB308" />' +
+          '<stop offset="100%" stop-color="#92400E" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gBrassH + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+          '<stop offset="0%" stop-color="#CA8A04" />' +
+          '<stop offset="25%" stop-color="#FEF08A" />' +
+          '<stop offset="58%" stop-color="#EAB308" />' +
+          '<stop offset="100%" stop-color="#92400E" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gBrassDark + '" x1="0%" y1="0%" x2="0%" y2="100%">' +
+          '<stop offset="0%" stop-color="#A16207" />' +
+          '<stop offset="25%" stop-color="#FDE047" />' +
+          '<stop offset="60%" stop-color="#CA8A04" />' +
+          '<stop offset="100%" stop-color="#713F12" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + gBrassDarkH + '" x1="0%" y1="0%" x2="100%" y2="0%">' +
+          '<stop offset="0%" stop-color="#A16207" />' +
+          '<stop offset="25%" stop-color="#FDE047" />' +
+          '<stop offset="60%" stop-color="#CA8A04" />' +
+          '<stop offset="100%" stop-color="#713F12" />' +
+        '</linearGradient>' +
+      '</defs>';
+
     /* Realistic metal fitting renderer for End 1 (side=-1) and End 2 (side=1) */
     const drawFitting = function (side, shape, gender) {
       const hasFit = Boolean(shape || gender);
-      const ferruleFill = hasFit ? "url(#hose-zinc-grad)" : "#E2E8F0";
-      const brassFill = hasFit ? "url(#hose-brass-grad)" : "#E2E8F0";
-      const brassShade = hasFit ? "#CA8A04" : "#CBD5E1";
-      const strokeCol = hasFit ? "#713F12" : "#94A3B8";
-      const ferruleStroke = hasFit ? "#475569" : "#94A3B8";
-      const threadCol = hasFit ? "#713F12" : "#94A3B8";
+      const ferruleFill = "url(#" + gSteel + ")";
+      const fittingFillV = hasFit ? ("url(#" + gBrass + ")") : ("url(#" + gSteel + ")");
+      const fittingFillH = hasFit ? ("url(#" + gBrassH + ")") : ("url(#" + gSteelH + ")");
+      const threadFillV = hasFit ? ("url(#" + gBrassDark + ")") : ("url(#" + gSteel + ")");
+      const threadFillH = hasFit ? ("url(#" + gBrassDarkH + ")") : ("url(#" + gSteelH + ")");
+      const hexTopCol = hasFit ? "#FEF08A" : "#E6ECF2";
+      const hexMidCol = hasFit ? "#EAB308" : "#B4BFCB";
+      const hexBotCol = hasFit ? "#B45309" : "#7D8896";
+      const strokeCol = hasFit ? "#713F12" : "#5F6B79";
+      const ferruleStroke = "#5F6B79";
+      const threadCol = hasFit ? "#713F12" : "#5F6B79";
 
-      /* Rotate angle at hose ends: End 1 tangent points down-left/up-right, keep ferrule horizontal-aligned cleanly */
       const fx = (side === -1) ? 70 : 272;
       const fy = yBase - 12;
 
-      let parts = [];
+      const parts = [];
 
-      /* Ferrule crimp collar */
+      /* Crimp ferrule with steel cylinder gradient, two thin ring lines, and highlight */
       parts.push(
-        '<rect x="' + fx + '" y="' + fy + '" width="18" height="24" rx="2" fill="' + ferruleFill + '" stroke="' + ferruleStroke + '" stroke-width="1.6" />' +
-        '<line x1="' + (fx + 6) + '" y1="' + fy + '" x2="' + (fx + 6) + '" y2="' + (fy + 24) + '" stroke="' + ferruleStroke + '" stroke-width="1.1" />' +
-        '<line x1="' + (fx + 12) + '" y1="' + fy + '" x2="' + (fx + 12) + '" y2="' + (fy + 24) + '" stroke="' + ferruleStroke + '" stroke-width="1.1" />'
+        '<rect x="' + fx + '" y="' + fy + '" width="18" height="24" rx="2" fill="' + ferruleFill + '" stroke="' + ferruleStroke + '" stroke-width="1.5" />' +
+        '<line x1="' + (fx + 1.5) + '" y1="' + (fy + 4.5) + '" x2="' + (fx + 16.5) + '" y2="' + (fy + 4.5) + '" stroke="#FFFFFF" stroke-width="1" opacity="0.55" />' +
+        '<line x1="' + (fx + 6) + '" y1="' + fy + '" x2="' + (fx + 6) + '" y2="' + (fy + 24) + '" stroke="' + ferruleStroke + '" stroke-width="1.05" />' +
+        '<line x1="' + (fx + 12) + '" y1="' + fy + '" x2="' + (fx + 12) + '" y2="' + (fy + 24) + '" stroke="' + ferruleStroke + '" stroke-width="1.05" />'
       );
 
       if (shape === "E") {
         /* 90-degree elbow bending downward */
-        const dir = side; /* -1 left, +1 right */
+        const dir = side;
         const startX = (dir === -1) ? 70 : 290;
         const turnX = (dir === -1) ? 48 : 312;
         const elbowD = "M " + startX + " " + yBase + " Q " + turnX + " " + yBase + " " + turnX + " " + (yBase + 22);
 
         parts.push(
           '<path d="' + elbowD + '" fill="none" stroke="' + strokeCol + '" stroke-width="16" stroke-linecap="butt" />' +
-          '<path d="' + elbowD + '" fill="none" stroke="' + brassFill + '" stroke-width="12.5" stroke-linecap="butt" />'
+          '<path d="' + elbowD + '" fill="none" stroke="' + fittingFillV + '" stroke-width="12.5" stroke-linecap="butt" />' +
+          '<path d="' + elbowD + '" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.4" transform="translate(0,-2.5)" />'
         );
 
         const tipY = yBase + 22;
         if (gender === "M") {
-          /* Hex shoulder + downward male threads */
+          /* Hex shoulder with 3 facet bands + downward male threads */
           parts.push(
-            '<rect x="' + (turnX - 11) + '" y="' + tipY + '" width="22" height="9" rx="1.5" fill="' + brassFill + '" stroke="' + strokeCol + '" stroke-width="1.5" />' +
-            '<line x1="' + (turnX - 4) + '" y1="' + tipY + '" x2="' + (turnX - 4) + '" y2="' + (tipY + 9) + '" stroke="' + strokeCol + '" stroke-width="1" />' +
-            '<line x1="' + (turnX + 4) + '" y1="' + tipY + '" x2="' + (turnX + 4) + '" y2="' + (tipY + 9) + '" stroke="' + strokeCol + '" stroke-width="1" />' +
-            '<rect x="' + (turnX - 7) + '" y="' + (tipY + 9) + '" width="14" height="14" rx="1" fill="' + brassShade + '" stroke="' + strokeCol + '" stroke-width="1.5" />'
+            '<rect x="' + (turnX - 11) + '" y="' + tipY + '" width="7.3" height="9" fill="' + hexTopCol + '" />' +
+            '<rect x="' + (turnX - 3.7) + '" y="' + tipY + '" width="7.4" height="9" fill="' + hexMidCol + '" />' +
+            '<rect x="' + (turnX + 3.7) + '" y="' + tipY + '" width="7.3" height="9" fill="' + hexBotCol + '" />' +
+            '<rect x="' + (turnX - 11) + '" y="' + tipY + '" width="22" height="9" rx="1.5" fill="none" stroke="' + strokeCol + '" stroke-width="1.4" />' +
+            '<line x1="' + (turnX - 3.7) + '" y1="' + tipY + '" x2="' + (turnX - 3.7) + '" y2="' + (tipY + 9) + '" stroke="' + strokeCol + '" stroke-width="1" />' +
+            '<line x1="' + (turnX + 3.7) + '" y1="' + tipY + '" x2="' + (turnX + 3.7) + '" y2="' + (tipY + 9) + '" stroke="' + strokeCol + '" stroke-width="1" />' +
+            '<rect x="' + (turnX - 7) + '" y="' + (tipY + 9) + '" width="14" height="14" rx="1" fill="' + threadFillH + '" stroke="' + strokeCol + '" stroke-width="1.4" />'
           );
           for (let ty = tipY + 12; ty <= tipY + 21; ty += 3) {
             parts.push('<line x1="' + (turnX - 7) + '" y1="' + ty + '" x2="' + (turnX + 7) + '" y2="' + (ty + 1.2) + '" stroke="' + threadCol + '" stroke-width="1.2" />');
           }
         } else if (gender === "F") {
-          /* Large hex swivel nut + hollow dark bore at bottom */
+          /* Female swivel nut with cylinder shading, two ring lines, highlight, and dark bore */
           parts.push(
-            '<rect x="' + (turnX - 13) + '" y="' + tipY + '" width="26" height="16" rx="2" fill="' + brassFill + '" stroke="' + strokeCol + '" stroke-width="1.6" />' +
-            '<line x1="' + (turnX - 6) + '" y1="' + tipY + '" x2="' + (turnX - 6) + '" y2="' + (tipY + 16) + '" stroke="' + strokeCol + '" stroke-width="1.2" />' +
-            '<line x1="' + (turnX + 6) + '" y1="' + tipY + '" x2="' + (turnX + 6) + '" y2="' + (tipY + 16) + '" stroke="' + strokeCol + '" stroke-width="1.2" />' +
+            '<rect x="' + (turnX - 13) + '" y="' + tipY + '" width="26" height="16" rx="2" fill="' + fittingFillH + '" stroke="' + strokeCol + '" stroke-width="1.5" />' +
+            '<line x1="' + (turnX - 9) + '" y1="' + (tipY + 2) + '" x2="' + (turnX - 9) + '" y2="' + (tipY + 14) + '" stroke="#FFFFFF" stroke-width="1.1" opacity="0.55" />' +
+            '<line x1="' + (turnX - 5.5) + '" y1="' + tipY + '" x2="' + (turnX - 5.5) + '" y2="' + (tipY + 16) + '" stroke="' + strokeCol + '" stroke-width="1.15" />' +
+            '<line x1="' + (turnX + 5.5) + '" y1="' + tipY + '" x2="' + (turnX + 5.5) + '" y2="' + (tipY + 16) + '" stroke="' + strokeCol + '" stroke-width="1.15" />' +
             '<ellipse cx="' + turnX + '" cy="' + (tipY + 16) + '" rx="7" ry="2.6" fill="#1E293B" stroke="' + strokeCol + '" stroke-width="1.2" />'
           );
         } else {
           parts.push(
-            '<rect x="' + (turnX - 9) + '" y="' + tipY + '" width="18" height="10" rx="1.5" fill="' + brassFill + '" stroke="' + strokeCol + '" stroke-width="1.4" />'
+            '<rect x="' + (turnX - 9) + '" y="' + tipY + '" width="18" height="10" rx="1.5" fill="' + fittingFillH + '" stroke="' + strokeCol + '" stroke-width="1.4" />'
           );
         }
       } else {
@@ -445,17 +539,20 @@ window.QS_MODULES.push({
         const dir = side;
         const neckX = (dir === -1) ? 58 : 290;
         parts.push(
-          '<rect x="' + neckX + '" y="' + (yBase - 8) + '" width="12" height="16" fill="' + brassFill + '" stroke="' + strokeCol + '" stroke-width="1.5" />'
+          '<rect x="' + neckX + '" y="' + (yBase - 8) + '" width="12" height="16" fill="' + fittingFillV + '" stroke="' + strokeCol + '" stroke-width="1.4" />'
         );
 
         if (gender === "M") {
           const hexX = (dir === -1) ? 49 : 302;
           const spigX = (dir === -1) ? 33 : 311;
           parts.push(
-            '<rect x="' + hexX + '" y="' + (yBase - 11) + '" width="9" height="22" rx="1.5" fill="' + brassFill + '" stroke="' + strokeCol + '" stroke-width="1.5" />' +
-            '<line x1="' + hexX + '" y1="' + (yBase - 4) + '" x2="' + (hexX + 9) + '" y2="' + (yBase - 4) + '" stroke="' + strokeCol + '" stroke-width="1" />' +
-            '<line x1="' + hexX + '" y1="' + (yBase + 4) + '" x2="' + (hexX + 9) + '" y2="' + (yBase + 4) + '" stroke="' + strokeCol + '" stroke-width="1" />' +
-            '<rect x="' + spigX + '" y="' + (yBase - 7) + '" width="16" height="14" rx="1" fill="' + brassShade + '" stroke="' + strokeCol + '" stroke-width="1.5" />'
+            '<rect x="' + hexX + '" y="' + (yBase - 11) + '" width="9" height="7.3" fill="' + hexTopCol + '" />' +
+            '<rect x="' + hexX + '" y="' + (yBase - 3.7) + '" width="9" height="7.4" fill="' + hexMidCol + '" />' +
+            '<rect x="' + hexX + '" y="' + (yBase + 3.7) + '" width="9" height="7.3" fill="' + hexBotCol + '" />' +
+            '<rect x="' + hexX + '" y="' + (yBase - 11) + '" width="9" height="22" rx="1.5" fill="none" stroke="' + strokeCol + '" stroke-width="1.4" />' +
+            '<line x1="' + hexX + '" y1="' + (yBase - 3.7) + '" x2="' + (hexX + 9) + '" y2="' + (yBase - 3.7) + '" stroke="' + strokeCol + '" stroke-width="1" />' +
+            '<line x1="' + hexX + '" y1="' + (yBase + 3.7) + '" x2="' + (hexX + 9) + '" y2="' + (yBase + 3.7) + '" stroke="' + strokeCol + '" stroke-width="1" />' +
+            '<rect x="' + spigX + '" y="' + (yBase - 7) + '" width="16" height="14" rx="1" fill="' + threadFillV + '" stroke="' + strokeCol + '" stroke-width="1.4" />'
           );
           for (let tx = spigX + 3; tx <= spigX + 13; tx += 3.2) {
             parts.push('<line x1="' + tx + '" y1="' + (yBase - 7) + '" x2="' + (tx + 1.2) + '" y2="' + (yBase + 7) + '" stroke="' + threadCol + '" stroke-width="1.2" />');
@@ -464,9 +561,10 @@ window.QS_MODULES.push({
           const nutX = (dir === -1) ? 41 : 302;
           const boreX = (dir === -1) ? 41 : 319;
           parts.push(
-            '<rect x="' + nutX + '" y="' + (yBase - 13) + '" width="17" height="26" rx="2" fill="' + brassFill + '" stroke="' + strokeCol + '" stroke-width="1.6" />' +
-            '<line x1="' + nutX + '" y1="' + (yBase - 6) + '" x2="' + (nutX + 17) + '" y2="' + (yBase - 6) + '" stroke="' + strokeCol + '" stroke-width="1.2" />' +
-            '<line x1="' + nutX + '" y1="' + (yBase + 6) + '" x2="' + (nutX + 17) + '" y2="' + (yBase + 6) + '" stroke="' + strokeCol + '" stroke-width="1.2" />' +
+            '<rect x="' + nutX + '" y="' + (yBase - 13) + '" width="17" height="26" rx="2" fill="' + fittingFillV + '" stroke="' + strokeCol + '" stroke-width="1.5" />' +
+            '<line x1="' + (nutX + 2) + '" y1="' + (yBase - 9) + '" x2="' + (nutX + 15) + '" y2="' + (yBase - 9) + '" stroke="#FFFFFF" stroke-width="1.1" opacity="0.55" />' +
+            '<line x1="' + nutX + '" y1="' + (yBase - 5.5) + '" x2="' + (nutX + 17) + '" y2="' + (yBase - 5.5) + '" stroke="' + strokeCol + '" stroke-width="1.15" />' +
+            '<line x1="' + nutX + '" y1="' + (yBase + 5.5) + '" x2="' + (nutX + 17) + '" y2="' + (yBase + 5.5) + '" stroke="' + strokeCol + '" stroke-width="1.15" />' +
             '<ellipse cx="' + boreX + '" cy="' + yBase + '" rx="2.6" ry="7" fill="#1E293B" stroke="' + strokeCol + '" stroke-width="1.2" />'
           );
         }
@@ -475,23 +573,18 @@ window.QS_MODULES.push({
       return parts.join("");
     };
 
+    const hoseShadowSvg =
+      '<ellipse cx="180" cy="' + (yBase + 11) + '" rx="108" ry="4.5" fill="#0F172A" opacity="0.12" />';
+
     const hoseSvg =
-      '<defs>' +
-        '<linearGradient id="hose-zinc-grad" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0%" stop-color="#E2E8F0"/>' +
-          '<stop offset="45%" stop-color="#CBD5E1"/>' +
-          '<stop offset="100%" stop-color="#94A3B8"/>' +
-        '</linearGradient>' +
-        '<linearGradient id="hose-brass-grad" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0%" stop-color="#FEF08A"/>' +
-          '<stop offset="45%" stop-color="#EAB308"/>' +
-          '<stop offset="100%" stop-color="#B45309"/>' +
-        '</linearGradient>' +
-      '</defs>' +
+      defsSvg +
+      hoseShadowSvg +
       '<path d="' + archD + '" fill="none" stroke="' + bodyStroke + '" stroke-width="24" stroke-linecap="butt" />' +
-      '<path d="' + archD + '" fill="none" stroke="' + bodyFill + '" stroke-width="20.5" stroke-linecap="butt" />' +
-      '<path d="' + archD + '" fill="none" stroke="' + highlightStroke + '" stroke-width="3" stroke-linecap="butt" opacity="0.28" transform="translate(0,-4)" />' +
-      textureSvg +
+      '<path d="' + archD + '" fill="none" stroke="url(#' + gBody + ')" stroke-width="20.5" stroke-linecap="butt" />' +
+      '<g clip-path="url(#' + gClip + ')">' +
+        textureSvg +
+        '<path d="' + archD + '" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="butt" opacity="' + stripeOpacity + '" transform="translate(0,-4.5)" />' +
+      '</g>' +
       drawFitting(-1, e1Shape, e1Gender) +
       drawFitting(1, e2Shape, e2Gender);
 
@@ -589,7 +682,7 @@ window.QS_MODULES.push({
     const totalHeight = (hasAnyThread ? 314 : 298) + yOffset;
 
     return (
-      '<svg viewBox="0 0 360 ' + totalHeight + '" role="img" aria-label="Hose technical drawing">' +
+      '<svg viewBox="0 0 360 ' + totalHeight + '" shape-rendering="geometricPrecision" role="img" aria-label="Hose technical drawing">' +
         '<rect x="0" y="0" width="360" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
         bodyMetaSvg +

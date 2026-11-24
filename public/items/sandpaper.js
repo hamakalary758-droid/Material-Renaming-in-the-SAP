@@ -126,6 +126,29 @@ window.QS_MODULES.push({
       if (current) lines.push(current);
       return lines;
     };
+    const mixHex = function (hexA, hexB, weight) {
+      const parse = function (h) {
+        const cleanHex = String(h || "#000000").replace("#", "");
+        return [
+          parseInt(cleanHex.slice(0, 2), 16) || 0,
+          parseInt(cleanHex.slice(2, 4), 16) || 0,
+          parseInt(cleanHex.slice(4, 6), 16) || 0
+        ];
+      };
+      const a = parse(hexA);
+      const b = parse(hexB);
+      const t = Math.max(0, Math.min(1, weight));
+      const toHex = function (n) {
+        const clamped = Math.max(0, Math.min(255, Math.round(n)));
+        return (clamped < 16 ? "0" : "") + clamped.toString(16).toUpperCase();
+      };
+      return (
+        "#" +
+        toHex(a[0] + (b[0] - a[0]) * t) +
+        toHex(a[1] + (b[1] - a[1]) * t) +
+        toHex(a[2] + (b[2] - a[2]) * t)
+      );
+    };
 
     const grit = upper(values.grit);
     const gritMatch = grit.match(/(\d+)/);
@@ -172,6 +195,9 @@ window.QS_MODULES.push({
       }
     }
 
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "sandpaper-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
+
     /* Top short-name lines */
     const topText = clean(shortNameText);
     const topLines = topText ? wrapLines(topText, 36) : ["SAND PAPER ?"];
@@ -193,6 +219,63 @@ window.QS_MODULES.push({
     const sheetY = 66 + yOffset;
     const sheetW = 148;
     const sheetH = 168;
+    const cornerR = 4;
+    const curlSize = 16;
+
+    const xL = sheetX;
+    const xR = sheetX + sheetW;
+    const yT = sheetY;
+    const yB = sheetY + sheetH;
+
+    /* Lighter and darker versions derived from sheet palette color */
+    const sheetLight = mixHex(palette.fill, "#FFFFFF", 0.24);
+    const sheetMid = palette.fill;
+    const sheetDark = mixHex(palette.fill, "#000000", 0.16);
+    const edgeLight = mixHex(palette.fill, "#FFFFFF", 0.44);
+    const edgeDark = mixHex(palette.fill, "#000000", 0.30);
+    const backLight = mixHex(palette.backing, "#FFFFFF", 0.14);
+    const backDark = mixHex(palette.backing, "#000000", 0.16);
+    const curlLight = mixHex(palette.fill, "#FFFFFF", 0.50);
+    const curlDark = mixHex(palette.fill, "#FFFFFF", 0.22);
+
+    const defsSvg =
+      '<defs>' +
+        '<linearGradient id="' + uid + '-sheet" gradientUnits="userSpaceOnUse" x1="' + xL + '" y1="' + yT + '" x2="' + xR + '" y2="' + yB + '">' +
+          '<stop offset="0%" stop-color="' + sheetLight + '" />' +
+          '<stop offset="50%" stop-color="' + sheetMid + '" />' +
+          '<stop offset="100%" stop-color="' + sheetDark + '" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + uid + '-back" gradientUnits="userSpaceOnUse" x1="' + (xL + 5) + '" y1="' + (yT + 5) + '" x2="' + (xR + 5) + '" y2="' + (yB + 5) + '">' +
+          '<stop offset="0%" stop-color="' + backLight + '" />' +
+          '<stop offset="100%" stop-color="' + backDark + '" />' +
+        '</linearGradient>' +
+        '<linearGradient id="' + uid + '-curl" gradientUnits="userSpaceOnUse" x1="' + (xR - curlSize + 1.5) + '" y1="' + (yB - curlSize + 1.5) + '" x2="' + (xR - curlSize / 2) + '" y2="' + (yB - curlSize / 2) + '">' +
+          '<stop offset="0%" stop-color="' + curlLight + '" />' +
+          '<stop offset="100%" stop-color="' + curlDark + '" />' +
+        '</linearGradient>' +
+        '<clipPath id="' + uid + '-clip">' +
+          '<path d="M ' + (xL + cornerR) + ' ' + yT +
+            ' L ' + (xR - cornerR) + ' ' + yT +
+            ' Q ' + xR + ' ' + yT + ' ' + xR + ' ' + (yT + cornerR) +
+            ' L ' + xR + ' ' + (yB - curlSize) +
+            ' L ' + (xR - curlSize) + ' ' + yB +
+            ' L ' + (xL + cornerR) + ' ' + yB +
+            ' Q ' + xL + ' ' + yB + ' ' + xL + ' ' + (yB - cornerR) +
+            ' L ' + xL + ' ' + (yT + cornerR) +
+            ' Q ' + xL + ' ' + yT + ' ' + (xL + cornerR) + ' ' + yT + ' Z" />' +
+        '</clipPath>' +
+      '</defs>';
+
+    const sheetPath =
+      "M " + (xL + cornerR) + " " + yT +
+      " L " + (xR - cornerR) + " " + yT +
+      " Q " + xR + " " + yT + " " + xR + " " + (yT + cornerR) +
+      " L " + xR + " " + (yB - curlSize) +
+      " L " + (xR - curlSize) + " " + yB +
+      " L " + (xL + cornerR) + " " + yB +
+      " Q " + xL + " " + yB + " " + xL + " " + (yB - cornerR) +
+      " L " + xL + " " + (yT + cornerR) +
+      " Q " + xL + " " + yT + " " + (xL + cornerR) + " " + yT + " Z";
 
     /* Deterministic rough abrasive grains distributed across sheet */
     const padX = 11;
@@ -217,14 +300,50 @@ window.QS_MODULES.push({
       dots.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + fill + '" />');
     }
 
+    /* Soft shadow behind the sheet */
+    const shadowSvg =
+      '<rect x="' + (sheetX + 10) + '" y="' + (sheetY + 10) + '" width="' + (sheetW + 1) + '" height="' + (sheetH + 1) + '" rx="8" fill="#0F172A" opacity="0.03" />' +
+      '<rect x="' + (sheetX + 8) + '" y="' + (sheetY + 8) + '" width="' + sheetW + '" height="' + sheetH + '" rx="6" fill="#0F172A" opacity="0.12" />';
+
+    /* Small curled bottom-right corner flap + soft shadow under the curl */
+    const curlX1 = xR;
+    const curlY1 = yB - curlSize;
+    const curlX2 = xR - curlSize;
+    const curlY2 = yB;
+    const curlTipX = xR - curlSize + 1.5;
+    const curlTipY = yB - curlSize + 1.5;
+
+    const curlShadowPoly =
+      curlX1 + "," + curlY1 + " " +
+      (xR - curlSize - 4) + "," + (yB - curlSize - 3) + " " +
+      curlX2 + "," + curlY2;
+
+    const curlPath =
+      "M " + curlX1 + " " + curlY1 +
+      " Q " + (xR - curlSize + 5) + " " + (yB - curlSize + 1) + " " + curlTipX + " " + curlTipY +
+      " Q " + (xR - curlSize + 1) + " " + (yB - curlSize + 5) + " " + curlX2 + " " + curlY2 + " Z";
+
     const shapeSvg =
       /* Backing paper layer slightly offset to look like a real sheet */
-      '<rect x="' + (sheetX + 5) + '" y="' + (sheetY + 5) + '" width="' + sheetW + '" height="' + sheetH + '" rx="4" fill="' + palette.backing + '" stroke="' + palette.stroke + '" stroke-width="1.3" opacity="0.85" />' +
-      /* Main abrasive sheet */
-      '<rect x="' + sheetX + '" y="' + sheetY + '" width="' + sheetW + '" height="' + sheetH + '" rx="4" fill="' + palette.fill + '" stroke="' + palette.stroke + '" stroke-width="1.8" />' +
-      /* Subtle edge highlight */
-      '<line x1="' + (sheetX + 6) + '" y1="' + (sheetY + 4) + '" x2="' + (sheetX + sheetW - 6) + '" y2="' + (sheetY + 4) + '" stroke="#FFFFFF" stroke-width="1.2" opacity="0.28" stroke-linecap="round" />' +
-      dots.join("");
+      '<rect x="' + (sheetX + 5) + '" y="' + (sheetY + 5) + '" width="' + sheetW + '" height="' + sheetH + '" rx="4" fill="url(#' + uid + '-back)" stroke="' + palette.stroke + '" stroke-width="1.3" opacity="0.9" />' +
+      /* Main shaded abrasive sheet + clipped grains + thickness bevel edges */
+      '<g clip-path="url(#' + uid + '-clip)">' +
+        '<path d="' + sheetPath + '" fill="url(#' + uid + '-sheet)" />' +
+        dots.join("") +
+        /* Thin lighter edge on top and left */
+        '<line x1="' + (xL + 2) + '" y1="' + (yT + 1.5) + '" x2="' + (xR - 2) + '" y2="' + (yT + 1.5) + '" stroke="' + edgeLight + '" stroke-width="2" stroke-linecap="round" />' +
+        '<line x1="' + (xL + 1.5) + '" y1="' + (yT + 2) + '" x2="' + (xL + 1.5) + '" y2="' + (yB - 2) + '" stroke="' + edgeLight + '" stroke-width="2" stroke-linecap="round" />' +
+        /* Thin darker edge on bottom and right */
+        '<line x1="' + (xL + 3) + '" y1="' + (yB - 1.5) + '" x2="' + curlX2 + '" y2="' + (yB - 1.5) + '" stroke="' + edgeDark + '" stroke-width="2" stroke-linecap="round" />' +
+        '<line x1="' + (xR - 1.5) + '" y1="' + (yT + 3) + '" x2="' + (xR - 1.5) + '" y2="' + curlY1 + '" stroke="' + edgeDark + '" stroke-width="2" stroke-linecap="round" />' +
+        /* Soft shadow under the curled corner */
+        '<polygon points="' + curlShadowPoly + '" fill="#0F172A" opacity="0.14" />' +
+      '</g>' +
+      /* Crisp sheet outline */
+      '<path d="' + sheetPath + '" fill="none" stroke="' + palette.stroke + '" stroke-width="1.6" stroke-linejoin="round" />' +
+      /* Curled bottom-right corner triangle */
+      '<path d="' + curlPath + '" fill="url(#' + uid + '-curl)" stroke="' + palette.stroke + '" stroke-width="1.2" stroke-linejoin="round" />' +
+      '<line x1="' + (curlX1 - 2) + '" y1="' + (curlY1 + 1.5) + '" x2="' + (curlTipX + 1.5) + '" y2="' + (curlTipY + 0.5) + '" stroke="#FFFFFF" stroke-width="1" opacity="0.45" stroke-linecap="round" />';
 
     /* Right-side Grit pointer label */
     const yLabel = 144 + yOffset;
@@ -239,9 +358,11 @@ window.QS_MODULES.push({
     const totalHeight = 258 + yOffset;
 
     return (
-      '<svg viewBox="0 0 380 ' + totalHeight + '" role="img" aria-label="Sand paper drawing">' +
+      '<svg viewBox="0 0 380 ' + totalHeight + '" shape-rendering="geometricPrecision" role="img" aria-label="Sand paper drawing">' +
+        defsSvg +
         '<rect x="0" y="0" width="380" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
+        shadowSvg +
         '<g class="bolt-shape-animate">' +
           shapeSvg +
         '</g>' +

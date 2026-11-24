@@ -368,22 +368,39 @@ window.QS_MODULES.push({
     const matPalette = (material && mod.materialColors && mod.materialColors[material]) ? mod.materialColors[material] : null;
     const hasMat = Boolean(material);
     const useShine = Boolean(matPalette && matPalette.shine);
-    const fillColor = matPalette
-      ? (useShine ? "url(#hj-ss-grad)" : matPalette.fill)
-      : (hasMat ? "#D5DCE3" : "#EEF2F6");
-    const shadeColor = matPalette ? matPalette.shade : (hasMat ? "#BCC7D2" : "#E2E8F0");
+    const fillColor = matPalette ? matPalette.fill : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const shadeColor = matPalette ? matPalette.shade : (hasMat ? "#BCC7D2" : "#CBD5E1");
+    const midColor = useShine ? "#FFFFFF" : fillColor;
     const strokeColor = matPalette ? matPalette.stroke : (hasMat ? "#475569" : "#94A3B8");
     const detailColor = matPalette ? matPalette.detail : (hasMat ? "#64748B" : "#94A3B8");
     const dotColor = matPalette ? matPalette.dot : (hasMat ? "#D5DCE3" : "#EEF2F6");
 
-    const defsSvg = useShine
-      ? '<defs><linearGradient id="hj-ss-grad" x1="0%" y1="0%" x2="100%" y2="100%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="38%" stop-color="#FFFFFF" />' +
-          '<stop offset="72%" stop-color="#CBD5E1" />' +
-          '<stop offset="100%" stop-color="#F1F5F9" />' +
-        '</linearGradient></defs>'
-      : "";
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "hj-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
+
+    const cylStops =
+      '<stop offset="0%" stop-color="' + shadeColor + '" />' +
+      '<stop offset="28%" stop-color="' + fillColor + '" />' +
+      '<stop offset="48%" stop-color="' + midColor + '" />' +
+      '<stop offset="72%" stop-color="' + fillColor + '" />' +
+      '<stop offset="100%" stop-color="' + shadeColor + '" />';
+
+    const hiW = useShine ? "3.2" : "2.2";
+    const hiOp = useShine ? "0.72" : "0.45";
+
+    const gradDefs = [];
+    const clipDefs = [];
+    let gradSeq = 0;
+    const addGrad = function (tag, x1, y1, x2, y2) {
+      gradSeq += 1;
+      const id = uid + "-" + tag + "-" + gradSeq;
+      gradDefs.push(
+        '<linearGradient id="' + id + '" gradientUnits="userSpaceOnUse" x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '">' +
+          cylStops +
+        '</linearGradient>'
+      );
+      return "url(#" + id + ")";
+    };
 
     const topText = clean(shortNameText);
     const topLines = topText ? wrapLines(topText, 36) : ["NEW HOSE JOINT"];
@@ -413,18 +430,52 @@ window.QS_MODULES.push({
       const poly = function (pts, fill, sw) {
         return '<polygon points="' + pts.map(function (p) { return pt(p[0], p[1]); }).join(" ") + '" fill="' + fill + '" stroke="' + strokeColor + '" stroke-width="' + (sw || 1.2) + '" stroke-linejoin="miter" />';
       };
+      const polyNoStroke = function (pts, fill) {
+        return '<polygon points="' + pts.map(function (p) { return pt(p[0], p[1]); }).join(" ") + '" fill="' + fill + '" />';
+      };
+      const polyStrokeOnly = function (pts, sw) {
+        return '<polygon points="' + pts.map(function (p) { return pt(p[0], p[1]); }).join(" ") + '" fill="none" stroke="' + strokeColor + '" stroke-width="' + (sw || 1.2) + '" stroke-linejoin="miter" />';
+      };
       const line = function (a1, p1, a2, p2, col, sw, dash) {
         const dashAttr = dash ? (' stroke-dasharray="' + dash + '"') : "";
         return '<line x1="' + (bx + a1 * tx + p1 * px) + '" y1="' + (by + a1 * ty + p1 * py) + '" x2="' + (bx + a2 * tx + p2 * px) + '" y2="' + (by + a2 * ty + p2 * py) + '" stroke="' + (col || strokeColor) + '" stroke-width="' + (sw || 1) + '"' + dashAttr + ' />';
       };
+      const hiLine = function (a1, a2, perpPos) {
+        return '<line x1="' + (bx + a1 * tx + perpPos * px) + '" y1="' + (by + a1 * ty + perpPos * py) + '" x2="' + (bx + a2 * tx + perpPos * px) + '" y2="' + (by + a2 * ty + perpPos * py) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />';
+      };
+      const endGrad = function (tag, halfPerp) {
+        return addGrad(
+          dir + "-" + tag,
+          bx - halfPerp * px,
+          by - halfPerp * py,
+          bx + halfPerp * px,
+          by + halfPerp * py
+        );
+      };
 
       if (letter === "B") {
-        /* Barbed spigot with 3 crisp ribs */
+        /* Barbed spigot with shaded shaft + 3 shaded barb rings */
+        const gShaft = endGrad("b-shaft", 10);
+        const gB1 = endGrad("b-1", 15);
+        const gB2 = endGrad("b-2", 15);
+        const gB3 = endGrad("b-3", 15);
+        const pShaft = [[0, -10], [46, -10], [50, -8], [50, 8], [46, 10], [0, 10]];
+        const pB1 = [[10, -10], [16, -15], [18, -15], [18, 15], [16, 15], [10, 10]];
+        const pB2 = [[24, -10], [30, -15], [32, -15], [32, 15], [30, 15], [24, 10]];
+        const pB3 = [[38, -10], [44, -15], [46, -15], [46, 15], [44, 15], [38, 10]];
         return (
-          poly([[0, -10], [46, -10], [50, -8], [50, 8], [46, 10], [0, 10]], fillColor) +
-          poly([[10, -10], [16, -15], [18, -15], [18, 15], [16, 15], [10, 10]], shadeColor, 1) +
-          poly([[24, -10], [30, -15], [32, -15], [32, 15], [30, 15], [24, 10]], shadeColor, 1) +
-          poly([[38, -10], [44, -15], [46, -15], [46, 15], [44, 15], [38, 10]], shadeColor, 1) +
+          polyNoStroke(pShaft, gShaft) +
+          hiLine(2, 46, -6.5) +
+          polyStrokeOnly(pShaft, 1.2) +
+          polyNoStroke(pB1, gB1) +
+          hiLine(14, 17, -10.5) +
+          polyStrokeOnly(pB1, 1) +
+          polyNoStroke(pB2, gB2) +
+          hiLine(28, 31, -10.5) +
+          polyStrokeOnly(pB2, 1) +
+          polyNoStroke(pB3, gB3) +
+          hiLine(42, 45, -10.5) +
+          polyStrokeOnly(pB3, 1) +
           line(18, -14, 18, 14, detailColor, 0.9) +
           line(32, -14, 32, 14, detailColor, 0.9) +
           line(46, -14, 46, 14, detailColor, 0.9)
@@ -432,8 +483,10 @@ window.QS_MODULES.push({
       }
 
       if (letter === "M") {
-        /* Male thread spigot with crisp diagonal thread lines */
-        let s = poly([[0, -13], [44, -13], [48, -10], [48, 10], [44, 13], [0, 13]], fillColor);
+        /* Male thread spigot with shaded cylinder + crisp diagonal thread lines */
+        const gMale = endGrad("m", 13);
+        const pMale = [[0, -13], [44, -13], [48, -10], [48, 10], [44, 13], [0, 13]];
+        let s = polyNoStroke(pMale, gMale) + hiLine(2, 42, -8.5) + polyStrokeOnly(pMale, 1.2);
         for (let a = 6; a <= 40; a += 6) {
           s += line(a, -12, a + 3, 12, detailColor, 1);
         }
@@ -442,42 +495,76 @@ window.QS_MODULES.push({
       }
 
       if (letter === "F") {
-        /* Female thread: hex collar + internal bore & dashed thread lines */
+        /* Female thread: shaded hex collar + shaded internal bore & dashed thread lines */
+        const gOuter = endGrad("f-out", 19);
+        const gBore = endGrad("f-bore", 10);
+        const pOuter = [[0, -19], [40, -19], [40, 19], [0, 19]];
+        const pBore = [[18, -10], [40, -10], [40, 10], [18, 10]];
         return (
-          poly([[0, -19], [40, -19], [40, 19], [0, 19]], fillColor) +
+          polyNoStroke(pOuter, gOuter) +
+          hiLine(3, 37, -14) +
+          polyStrokeOnly(pOuter, 1.2) +
           line(0, -10, 40, -10, strokeColor, 1) +
           line(0, 10, 40, 10, strokeColor, 1) +
-          poly([[18, -10], [40, -10], [40, 10], [18, 10]], shadeColor, 1) +
+          polyNoStroke(pBore, gBore) +
+          hiLine(20, 38, -6.2) +
+          polyStrokeOnly(pBore, 1) +
           line(22, -7, 38, -7, detailColor, 1, "3 2") +
           line(22, 7, 38, 7, detailColor, 1, "3 2")
         );
       }
 
       if (letter === "S") {
-        /* Swivel: inner stem + turning hex nut collar */
+        /* Swivel: shaded inner stem + shaded turning hex nut collar + shaded tip */
+        const gStem = endGrad("s-stem", 11);
+        const gNut = endGrad("s-nut", 20);
+        const gTip = endGrad("s-tip", 10);
+        const pStem = [[0, -11], [14, -11], [14, 11], [0, 11]];
+        const pNut = [[14, -20], [40, -20], [40, 20], [14, 20]];
+        const pTip = [[40, -10], [50, -7], [50, 7], [40, 10]];
         return (
-          poly([[0, -11], [14, -11], [14, 11], [0, 11]], fillColor) +
-          poly([[14, -20], [40, -20], [40, 20], [14, 20]], shadeColor) +
+          polyNoStroke(pStem, gStem) +
+          hiLine(2, 12, -7) +
+          polyStrokeOnly(pStem, 1.2) +
+          polyNoStroke(pNut, gNut) +
+          hiLine(16, 38, -14.5) +
+          polyStrokeOnly(pNut, 1.2) +
           line(14, -11, 40, -11, strokeColor, 1) +
           line(14, 11, 40, 11, strokeColor, 1) +
-          poly([[40, -10], [50, -7], [50, 7], [40, 10]], fillColor) +
+          polyNoStroke(pTip, gTip) +
+          hiLine(41, 48, -6) +
+          polyStrokeOnly(pTip, 1.2) +
           line(27, -20, 27, 20, detailColor, 0.9)
         );
       }
 
       if (letter === "C") {
-        /* Compression: tube stub + olive/ring + hex compression nut */
+        /* Compression: shaded tube stub + shaded olive/ring + shaded hex compression nut */
+        const gTube = endGrad("c-tube", 11);
+        const gRing = endGrad("c-ring", 15);
+        const gNut = endGrad("c-nut", 20);
+        const pTube = [[0, -11], [54, -11], [54, 11], [0, 11]];
+        const pRing = [[6, -15], [14, -15], [14, 15], [6, 15]];
+        const pNut = [[18, -20], [40, -20], [40, 20], [18, 20]];
         return (
-          poly([[0, -11], [54, -11], [54, 11], [0, 11]], fillColor) +
-          poly([[6, -15], [14, -15], [14, 15], [6, 15]], shadeColor, 1.1) +
-          poly([[18, -20], [40, -20], [40, 20], [18, 20]], shadeColor) +
+          polyNoStroke(pTube, gTube) +
+          hiLine(2, 51, -7) +
+          polyStrokeOnly(pTube, 1.2) +
+          polyNoStroke(pRing, gRing) +
+          hiLine(7.5, 12.5, -10.5) +
+          polyStrokeOnly(pRing, 1.1) +
+          polyNoStroke(pNut, gNut) +
+          hiLine(20, 38, -14.5) +
+          polyStrokeOnly(pNut, 1.2) +
           line(18, -11, 40, -11, strokeColor, 1) +
           line(18, 11, 40, 11, strokeColor, 1)
         );
       }
 
-      /* Empty end: light neutral stub */
-      return poly([[0, -11], [38, -11], [38, 11], [0, 11]], fillColor);
+      /* Empty end: shaded neutral stub */
+      const gEmpty = endGrad("empty", 11);
+      const pEmpty = [[0, -11], [38, -11], [38, 11], [0, 11]];
+      return polyNoStroke(pEmpty, gEmpty) + hiLine(2, 35, -7) + polyStrokeOnly(pEmpty, 1.2);
     };
 
     const yOffset = topShift;
@@ -486,6 +573,7 @@ window.QS_MODULES.push({
     let bodySvg = "";
     let endsSvg = "";
     let calloutsSvg = "";
+    let shadowSvg = "";
 
     const formatEndLabel = function (prefix, letter, size) {
       if (!letter && !size) return prefix + ": ?";
@@ -498,19 +586,32 @@ window.QS_MODULES.push({
 
     if (shape === "Elbow 90") {
       /* 90 degree elbow block at (cx, cy) -> End 1 left, End 2 down */
+      const elbPath =
+        "M" + (cx - 24) + " " + (cy - 18) +
+        " H" + (cx + 12) +
+        " L" + (cx + 18) + " " + (cy - 12) +
+        " V" + (cy + 24) +
+        " H" + (cx - 18) +
+        " V" + (cy + 18) +
+        " H" + (cx - 24) + " Z";
+      const clipId = uid + "-elb-clip";
+      clipDefs.push('<clipPath id="' + clipId + '"><path d="' + elbPath + '" /></clipPath>');
+      const gH = addGrad("elb-h", cx, cy - 18, cx, cy + 18);
+      const gV = addGrad("elb-v", cx - 18, cy, cx + 18, cy);
+
       bodySvg =
-        '<path d="M' + (cx - 24) + ' ' + (cy - 18) +
-        ' H' + (cx + 12) +
-        ' L' + (cx + 18) + ' ' + (cy - 12) +
-        ' V' + (cy + 24) +
-        ' H' + (cx - 18) +
-        ' V' + (cy + 18) +
-        ' H' + (cx - 24) +
-        ' Z" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="miter" />' +
+        '<g clip-path="url(#' + clipId + ')">' +
+          '<rect x="' + (cx - 25) + '" y="' + (cy - 19) + '" width="45" height="38" fill="' + gH + '" />' +
+          '<polygon points="' + (cx - 19) + ',' + (cy - 18) + ' ' + (cx + 19) + ',' + (cy - 18) + ' ' + (cx + 19) + ',' + (cy + 25) + ' ' + (cx - 19) + ',' + (cy + 25) + '" fill="' + gV + '" opacity="0.65" />' +
+          '<line x1="' + (cx - 21) + '" y1="' + (cy - 12) + '" x2="' + (cx + 12) + '" y2="' + (cy - 12) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<line x1="' + (cx - 12) + '" y1="' + (cy - 8) + '" x2="' + (cx - 12) + '" y2="' + (cy + 21) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '</g>' +
+        '<path d="' + elbPath + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="miter" />' +
         '<line x1="' + (cx - 24) + '" y1="' + (cy - 18) + '" x2="' + (cx - 18) + '" y2="' + (cy + 18) + '" stroke="' + shadeColor + '" stroke-width="1" />';
       endsSvg =
         drawEndSymbol("left", end1Letter, cx - 24, cy) +
         drawEndSymbol("down", end2Letter, cx, cy + 24);
+      shadowSvg = '<ellipse cx="182" cy="' + (cy + 92) + '" rx="58" ry="4" fill="#0F172A" opacity="0.12" />';
 
       const e1Txt = formatEndLabel("END 1", end1Letter, end1Size);
       const e2Txt = formatEndLabel("END 2", end2Letter, end2Size);
@@ -527,22 +628,37 @@ window.QS_MODULES.push({
         '<text x="' + (cx + 38) + '" y="' + (cy + 72) + '" text-anchor="start" font-size="11.5" font-weight="700" fill="' + (e2Ok ? reqColor : missingColor) + '">' + esc(e2Txt) + '</text>';
     } else if (shape === "Tee") {
       /* Tee junction at (cx, cy) -> End 1 left, End 2 right, End 3 down (branch) */
+      const teePts =
+        (cx - 24) + "," + (cy - 18) + " " +
+        (cx + 24) + "," + (cy - 18) + " " +
+        (cx + 24) + "," + (cy + 18) + " " +
+        (cx + 18) + "," + (cy + 18) + " " +
+        (cx + 18) + "," + (cy + 26) + " " +
+        (cx - 18) + "," + (cy + 26) + " " +
+        (cx - 18) + "," + (cy + 18) + " " +
+        (cx - 24) + "," + (cy + 18);
+      const clipId = uid + "-tee-clip";
+      clipDefs.push('<clipPath id="' + clipId + '"><polygon points="' + teePts + '" /></clipPath>');
+      const gRun = addGrad("tee-run", cx, cy - 18, cx, cy + 18);
+      const gBr = addGrad("tee-br", cx - 18, cy, cx + 18, cy);
+      const gBoss = addGrad("tee-boss", cx, cy - 12, cx, cy + 12);
+
       bodySvg =
-        '<polygon points="' +
-          (cx - 24) + ',' + (cy - 18) + ' ' +
-          (cx + 24) + ',' + (cy - 18) + ' ' +
-          (cx + 24) + ',' + (cy + 18) + ' ' +
-          (cx + 18) + ',' + (cy + 18) + ' ' +
-          (cx + 18) + ',' + (cy + 26) + ' ' +
-          (cx - 18) + ',' + (cy + 26) + ' ' +
-          (cx - 18) + ',' + (cy + 18) + ' ' +
-          (cx - 24) + ',' + (cy + 18) +
-        '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="miter" />' +
-        '<rect x="' + (cx - 16) + '" y="' + (cy - 12) + '" width="32" height="24" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1" />';
+        '<g clip-path="url(#' + clipId + ')">' +
+          '<rect x="' + (cx - 25) + '" y="' + (cy - 19) + '" width="50" height="38" fill="' + gRun + '" />' +
+          '<rect x="' + (cx - 18) + '" y="' + (cy + 6) + '" width="36" height="21" fill="' + gBr + '" />' +
+          '<line x1="' + (cx - 21) + '" y1="' + (cy - 13) + '" x2="' + (cx + 21) + '" y2="' + (cy - 13) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<line x1="' + (cx - 12) + '" y1="' + (cy + 12) + '" x2="' + (cx - 12) + '" y2="' + (cy + 23) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '</g>' +
+        '<polygon points="' + teePts + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="miter" />' +
+        '<rect x="' + (cx - 16) + '" y="' + (cy - 12) + '" width="32" height="24" fill="' + gBoss + '" />' +
+        '<line x1="' + (cx - 13) + '" y1="' + (cy - 8) + '" x2="' + (cx + 13) + '" y2="' + (cy - 8) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '<rect x="' + (cx - 16) + '" y="' + (cy - 12) + '" width="32" height="24" fill="none" stroke="' + strokeColor + '" stroke-width="1" />';
       endsSvg =
         drawEndSymbol("left", end1Letter, cx - 24, cy) +
         drawEndSymbol("right", end2Letter, cx + 24, cy) +
         drawEndSymbol("down", end3Letter, cx, cy + 26);
+      shadowSvg = '<ellipse cx="190" cy="' + (cy + 93) + '" rx="74" ry="4" fill="#0F172A" opacity="0.12" />';
 
       const e1Txt = formatEndLabel("END 1", end1Letter, end1Size);
       const e2Txt = formatEndLabel("END 2", end2Letter, end2Size);
@@ -565,13 +681,17 @@ window.QS_MODULES.push({
         '<text x="' + (cx + 38) + '" y="' + (cy + 72) + '" text-anchor="start" font-size="11.5" font-weight="700" fill="' + (e3Ok ? reqColor : missingColor) + '">' + esc(e3Txt) + '</text>';
     } else {
       /* Straight center hex nut body -> End 1 left, End 2 right */
+      const gHex = addGrad("str-hex", cx, cy - 21, cx, cy + 21);
       bodySvg =
-        '<rect x="' + (cx - 22) + '" y="' + (cy - 21) + '" width="44" height="42" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1.2" />' +
+        '<rect x="' + (cx - 22) + '" y="' + (cy - 21) + '" width="44" height="42" fill="' + gHex + '" />' +
+        '<line x1="' + (cx - 19) + '" y1="' + (cy - 15) + '" x2="' + (cx + 19) + '" y2="' + (cy - 15) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '<rect x="' + (cx - 22) + '" y="' + (cy - 21) + '" width="44" height="42" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" />' +
         '<line x1="' + (cx - 22) + '" y1="' + (cy - 10) + '" x2="' + (cx + 22) + '" y2="' + (cy - 10) + '" stroke="' + strokeColor + '" stroke-width="1" />' +
         '<line x1="' + (cx - 22) + '" y1="' + (cy + 10) + '" x2="' + (cx + 22) + '" y2="' + (cy + 10) + '" stroke="' + strokeColor + '" stroke-width="1" />';
       endsSvg =
         drawEndSymbol("left", end1Letter, cx - 22, cy) +
         drawEndSymbol("right", end2Letter, cx + 22, cy);
+      shadowSvg = '<ellipse cx="190" cy="' + (cy + 31) + '" rx="74" ry="4" fill="#0F172A" opacity="0.12" />';
 
       const e1Txt = formatEndLabel("END 1", end1Letter, end1Size);
       const e2Txt = formatEndLabel("END 2", end2Letter, end2Size);
@@ -587,6 +707,8 @@ window.QS_MODULES.push({
         '<circle cx="' + (cx + 56) + '" cy="' + (cy - 14) + '" r="2" fill="' + (e2Ok ? reqColor : missingColor) + '" />' +
         '<text x="' + (cx + 56) + '" y="' + (cy - 45) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="' + (e2Ok ? reqColor : missingColor) + '">' + esc(e2Txt) + '</text>';
     }
+
+    const defsSvg = '<defs>' + gradDefs.join("") + clipDefs.join("") + '</defs>';
 
     /* Info lines below drawing showing every selected option */
     const infoStartY = shape === "Straight" ? (218 + yOffset) : (254 + yOffset);
@@ -615,6 +737,7 @@ window.QS_MODULES.push({
         defsSvg +
         '<rect x="0" y="0" width="380" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
+        shadowSvg +
         '<g class="bolt-shape-animate">' +
           bodySvg +
           endsSvg +

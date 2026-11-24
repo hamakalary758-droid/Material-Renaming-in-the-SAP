@@ -1,4 +1,4 @@
-const CACHE_NAME = "qs-planner-v16";
+const CACHE_NAME = "qs-planner-v21";
 const ASSETS = [
   "./",
   "index.html",

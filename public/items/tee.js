@@ -407,21 +407,15 @@ window.QS_MODULES.push({
     const hasMat = Boolean(material);
     const matPalette = (material && mod.materialColors && mod.materialColors[material]) ? mod.materialColors[material] : null;
     const useShine = Boolean(matPalette && matPalette.shine);
-    const fillColor = matPalette
-      ? (useShine ? "url(#tee-ss-grad)" : matPalette.fill)
-      : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const cFill = matPalette ? matPalette.fill : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const cShade = matPalette ? matPalette.shade : (hasMat ? "#94A3B8" : "#CBD5E1");
+    const cMidHi = useShine ? "#FFFFFF" : cFill;
     const strokeColor = matPalette ? matPalette.stroke : (hasMat ? "#475569" : "#94A3B8");
     const detailColor = matPalette ? matPalette.detail : (hasMat ? "#64748B" : "#94A3B8");
     const dotColor = matPalette ? matPalette.dot : (hasMat ? "#D5DCE3" : "#EEF2F6");
 
-    const defsSvg = useShine
-      ? '<defs><linearGradient id="tee-ss-grad" x1="0%" y1="0%" x2="100%" y2="100%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="40%" stop-color="#FFFFFF" />' +
-          '<stop offset="72%" stop-color="#CBD5E1" />' +
-          '<stop offset="100%" stop-color="#F1F5F9" />' +
-        '</linearGradient></defs>'
-      : "";
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "tee-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
 
     const topText = clean(shortNameText);
     const topLines = topText ? wrapLines(topText, 36) : ["NEW PIPE TEE"];
@@ -450,14 +444,22 @@ window.QS_MODULES.push({
     const runLeft = 72;
     const runRight = 308;
 
-    const buildEndFeature = function (endCode, mx, my, tx, ty, nx, ny) {
+    const buildEndFeature = function (endCode, mx, my, tx, ty, nx, ny, gradId) {
       if (endCode === "W") {
+        /* Machined weld bevel: thin light ring + thin dark ring + chamfered edges */
         const bx = mx + tx * 5;
         const by = my + ty * 5;
+        const lx = mx + tx * 2.4;
+        const ly = my + ty * 2.4;
+        const dx = mx + tx * 4.8;
+        const dy = my + ty * 4.8;
         return (
-          '<line x1="' + (bx - nx * (halfW - 1)).toFixed(1) + '" y1="' + (by - ny * (halfW - 1)).toFixed(1) +
-            '" x2="' + (bx + nx * (halfW - 1)).toFixed(1) + '" y2="' + (by + ny * (halfW - 1)).toFixed(1) +
-            '" stroke="' + detailColor + '" stroke-width="1.1" />' +
+          '<line x1="' + (lx - nx * (halfW - 1.5)).toFixed(1) + '" y1="' + (ly - ny * (halfW - 1.5)).toFixed(1) +
+            '" x2="' + (lx + nx * (halfW - 1.5)).toFixed(1) + '" y2="' + (ly + ny * (halfW - 1.5)).toFixed(1) +
+            '" stroke="#FFFFFF" stroke-width="1.3" opacity="0.72" />' +
+          '<line x1="' + (dx - nx * (halfW - 1)).toFixed(1) + '" y1="' + (dy - ny * (halfW - 1)).toFixed(1) +
+            '" x2="' + (dx + nx * (halfW - 1)).toFixed(1) + '" y2="' + (dy + ny * (halfW - 1)).toFixed(1) +
+            '" stroke="' + detailColor + '" stroke-width="1.2" />' +
           '<line x1="' + (mx - nx * halfW).toFixed(1) + '" y1="' + (my - ny * halfW).toFixed(1) +
             '" x2="' + (bx - nx * (halfW - 4)).toFixed(1) + '" y2="' + (by - ny * (halfW - 4)).toFixed(1) +
             '" stroke="' + strokeColor + '" stroke-width="1" />' +
@@ -467,17 +469,39 @@ window.QS_MODULES.push({
         );
       }
       if (endCode === "THD") {
+        /* Threaded end: slightly thicker shaded collar with crisp slanted thread lines */
+        const cHalf = halfW + 2.5;
+        const cLen = 18;
+        const p1x = mx - nx * cHalf;
+        const p1y = my - ny * cHalf;
+        const p2x = mx + tx * cLen - nx * cHalf;
+        const p2y = my + ty * cLen - ny * cHalf;
+        const p3x = mx + tx * cLen + nx * cHalf;
+        const p3y = my + ty * cLen + ny * cHalf;
+        const p4x = mx + nx * cHalf;
+        const p4y = my + ny * cHalf;
+        const collarPath =
+          "M " + p1x.toFixed(1) + " " + p1y.toFixed(1) +
+          " L " + p2x.toFixed(1) + " " + p2y.toFixed(1) +
+          " L " + p3x.toFixed(1) + " " + p3y.toFixed(1) +
+          " L " + p4x.toFixed(1) + " " + p4y.toFixed(1) + " Z";
         const ridges = [];
-        for (let t = 4; t <= 20; t += 4) {
+        for (let t = 3.5; t <= 15.5; t += 3) {
           const rx = mx + tx * t;
           const ry = my + ty * t;
           ridges.push(
-            '<line x1="' + (rx - nx * halfW).toFixed(1) + '" y1="' + (ry - ny * halfW).toFixed(1) +
-              '" x2="' + (rx + nx * halfW).toFixed(1) + '" y2="' + (ry + ny * halfW).toFixed(1) +
-              '" stroke="' + strokeColor + '" stroke-width="1.2" />'
+            '<line x1="' + (rx + tx * 1.1 - nx * (cHalf - 1.2)).toFixed(1) + '" y1="' + (ry + ty * 1.1 - ny * (cHalf - 1.2)).toFixed(1) +
+              '" x2="' + (rx - tx * 1.1 + nx * (cHalf - 1.2)).toFixed(1) + '" y2="' + (ry - ty * 1.1 + ny * (cHalf - 1.2)).toFixed(1) +
+              '" stroke="' + strokeColor + '" stroke-width="1.15" />'
           );
         }
-        return ridges.join("");
+        return (
+          '<path d="' + collarPath + '" fill="url(#' + gradId + ')" stroke="' + strokeColor + '" stroke-width="1.1" stroke-linejoin="round" />' +
+          '<line x1="' + (p1x + tx * 2).toFixed(1) + '" y1="' + (p1y + ty * 2).toFixed(1) +
+            '" x2="' + (p2x - tx * 1).toFixed(1) + '" y2="' + (p2y - ty * 1).toFixed(1) +
+            '" stroke="#FFFFFF" stroke-width="1.1" opacity="' + (useShine ? "0.65" : "0.42") + '" />' +
+          ridges.join("")
+        );
       }
       return (
         '<line x1="' + (mx + tx * 10 - nx * halfW).toFixed(1) + '" y1="' + (my + ty * 10 - ny * halfW).toFixed(1) +
@@ -486,7 +510,32 @@ window.QS_MODULES.push({
       );
     };
 
+    const cylStops =
+      '<stop offset="0%" stop-color="' + cShade + '" />' +
+      '<stop offset="28%" stop-color="' + cFill + '" />' +
+      '<stop offset="48%" stop-color="' + cMidHi + '" />' +
+      '<stop offset="72%" stop-color="' + cFill + '" />' +
+      '<stop offset="100%" stop-color="' + cShade + '" />';
+
+    const topY = cy - halfW;
+    const botY = cy + halfW;
+
+    const runGrad =
+      '<linearGradient id="' + uid + '-run" gradientUnits="userSpaceOnUse" x1="' + runLeft + '" y1="' + topY + '" x2="' + runLeft + '" y2="' + botY + '">' +
+        cylStops +
+      '</linearGradient>';
+
+    const runFillSvg =
+      '<rect x="' + (runLeft - 2) + '" y="' + (topY - 2) + '" width="' + (runRight - runLeft + 4) + '" height="' + (halfW * 2 + 4) + '" fill="url(#' + uid + '-run)" />';
+
+    const runHighlightSvg =
+      '<line x1="' + runLeft + '" y1="' + (topY + 8) + '" x2="' + runRight + '" y2="' + (topY + 8) + '" stroke="#FFFFFF" stroke-width="' + (useShine ? "3.2" : "2.2") + '" stroke-linecap="round" opacity="' + (useShine ? "0.72" : "0.45") + '" />';
+
     let bodyPath = "";
+    let branchGrad = "";
+    let branchFillSvg = "";
+    let branchHighlightSvg = "";
+    let junctionBlendSvg = "";
     let centerPath = "";
     let end1Features = "";
     let end2Features = "";
@@ -505,9 +554,6 @@ window.QS_MODULES.push({
 
       /* Pipe half-width perpendicular to 45° up-right vector (c45, -c45) is (c45, c45) */
       const wOff = halfW / c45; /* intersection offset along horizontal top wall */
-      const topY = cy - halfW;
-      const botY = cy + halfW;
-
       const jLeftX = jx - wOff + halfW;
       const jRightX = jx + wOff + halfW;
 
@@ -527,13 +573,39 @@ window.QS_MODULES.push({
         " L " + jLeftX.toFixed(1) + " " + topY +
         " L " + runLeft + " " + topY + " Z";
 
+      branchGrad =
+        '<linearGradient id="' + uid + '-br" gradientUnits="userSpaceOnUse" x1="' + mUpperX.toFixed(1) + '" y1="' + mUpperY.toFixed(1) + '" x2="' + mLowerX.toFixed(1) + '" y2="' + mLowerY.toFixed(1) + '">' +
+          cylStops +
+        '</linearGradient>';
+
+      const saddleCx = (jLeftX + jRightX) / 2 + 2;
+      const saddleCy = topY + 12;
+      const branchPoly =
+        "M " + jLeftX.toFixed(1) + " " + topY +
+        " Q " + saddleCx.toFixed(1) + " " + saddleCy.toFixed(1) + " " + jRightX.toFixed(1) + " " + topY +
+        " L " + (mLowerX + 2).toFixed(1) + " " + (mLowerY - 2).toFixed(1) +
+        " L " + (mUpperX - 2).toFixed(1) + " " + (mUpperY - 2).toFixed(1) + " Z";
+      branchFillSvg = '<path d="' + branchPoly + '" fill="url(#' + uid + '-br)" />';
+
+      const hiOff = halfW - 8;
+      const bHiStartX = jLeftX + hiOff * c45;
+      const bHiStartY = topY + 3;
+      const bHiEndX = bx - hiOff * c45;
+      const bHiEndY = by - hiOff * c45;
+      branchHighlightSvg =
+        '<line x1="' + bHiStartX.toFixed(1) + '" y1="' + bHiStartY.toFixed(1) + '" x2="' + bHiEndX.toFixed(1) + '" y2="' + bHiEndY.toFixed(1) + '" stroke="#FFFFFF" stroke-width="' + (useShine ? "3" : "2") + '" stroke-linecap="round" opacity="' + (useShine ? "0.68" : "0.42") + '" />';
+
+      junctionBlendSvg =
+        '<path d="M ' + (jLeftX + 1.5).toFixed(1) + ' ' + topY + ' Q ' + saddleCx.toFixed(1) + ' ' + (saddleCy - 0.5).toFixed(1) + ' ' + (jRightX - 1.5).toFixed(1) + ' ' + topY + '" fill="none" stroke="' + cShade + '" stroke-width="1.5" opacity="0.52" />' +
+        '<path d="M ' + (jLeftX + 2.5).toFixed(1) + ' ' + (topY + 1.5) + ' Q ' + saddleCx.toFixed(1) + ' ' + (saddleCy + 1.2).toFixed(1) + ' ' + (jRightX - 2.5).toFixed(1) + ' ' + (topY + 1.5) + '" fill="none" stroke="#FFFFFF" stroke-width="1.1" opacity="' + (useShine ? "0.65" : "0.44") + '" />';
+
       centerPath =
         "M " + (runLeft - 6) + " " + cy + " L " + (runRight + 6) + " " + cy +
         " M " + jx + " " + cy + " L " + (bx + 6 * c45).toFixed(1) + " " + (by - 6 * c45).toFixed(1);
 
-      end1Features = buildEndFeature(side1End, runLeft, cy, 1, 0, 0, 1);
-      end2Features = buildEndFeature(side2End, runRight, cy, -1, 0, 0, 1);
-      end3Features = buildEndFeature(side3End, bx, by, -c45, c45, c45, c45);
+      end1Features = buildEndFeature(side1End, runLeft, cy, 1, 0, 0, 1, uid + "-run");
+      end2Features = buildEndFeature(side2End, runRight, cy, -1, 0, 0, 1, uid + "-run");
+      end3Features = buildEndFeature(side3End, bx, by, -c45, c45, c45, c45, uid + "-br");
 
       angleGuideSvg =
         '<path d="M ' + (jx + 34) + ' ' + cy + ' A 34 34 0 0 0 ' + (jx + 24) + ' ' + (cy - 24) + '" fill="none" stroke="' + reqColor + '" stroke-width="1.1" />' +
@@ -543,8 +615,6 @@ window.QS_MODULES.push({
       branchLabelY = mUpperY - 10;
     } else {
       /* Standard 90-degree T shape */
-      const topY = cy - halfW;
-      const botY = cy + halfW;
       const branchTop = cy - 78;
       const branchLeft = cx - halfW;
       const branchRight = cx + halfW;
@@ -559,17 +629,44 @@ window.QS_MODULES.push({
         " L " + branchLeft + " " + topY +
         " L " + runLeft + " " + topY + " Z";
 
+      branchGrad =
+        '<linearGradient id="' + uid + '-br" gradientUnits="userSpaceOnUse" x1="' + branchLeft + '" y1="' + branchTop + '" x2="' + branchRight + '" y2="' + branchTop + '">' +
+          cylStops +
+        '</linearGradient>';
+
+      const saddleCy = topY + 12;
+      const branchPoly =
+        "M " + branchLeft + " " + topY +
+        " Q " + cx + " " + saddleCy + " " + branchRight + " " + topY +
+        " L " + (branchRight + 1) + " " + (branchTop - 2) +
+        " L " + (branchLeft - 1) + " " + (branchTop - 2) + " Z";
+      branchFillSvg = '<path d="' + branchPoly + '" fill="url(#' + uid + '-br)" />';
+
+      branchHighlightSvg =
+        '<line x1="' + (branchLeft + 8) + '" y1="' + (branchTop + 2) + '" x2="' + (branchLeft + 8) + '" y2="' + (topY + 2) + '" stroke="#FFFFFF" stroke-width="' + (useShine ? "3" : "2") + '" stroke-linecap="round" opacity="' + (useShine ? "0.68" : "0.42") + '" />';
+
+      junctionBlendSvg =
+        '<path d="M ' + (branchLeft + 1.5) + ' ' + topY + ' Q ' + cx + ' ' + (saddleCy - 0.5) + ' ' + (branchRight - 1.5) + ' ' + topY + '" fill="none" stroke="' + cShade + '" stroke-width="1.5" opacity="0.52" />' +
+        '<path d="M ' + (branchLeft + 2.5) + ' ' + (topY + 1.5) + ' Q ' + cx + ' ' + (saddleCy + 1.2) + ' ' + (branchRight - 2.5) + ' ' + (topY + 1.5) + '" fill="none" stroke="#FFFFFF" stroke-width="1.1" opacity="' + (useShine ? "0.65" : "0.44") + '" />';
+
       centerPath =
         "M " + (runLeft - 6) + " " + cy + " L " + (runRight + 6) + " " + cy +
         " M " + cx + " " + cy + " L " + cx + " " + (branchTop - 6);
 
-      end1Features = buildEndFeature(side1End, runLeft, cy, 1, 0, 0, 1);
-      end2Features = buildEndFeature(side2End, runRight, cy, -1, 0, 0, 1);
-      end3Features = buildEndFeature(side3End, cx, branchTop, 0, 1, 1, 0);
+      end1Features = buildEndFeature(side1End, runLeft, cy, 1, 0, 0, 1, uid + "-run");
+      end2Features = buildEndFeature(side2End, runRight, cy, -1, 0, 0, 1, uid + "-run");
+      end3Features = buildEndFeature(side3End, cx, branchTop, 0, 1, 1, 0, uid + "-br");
 
       branchLabelX = cx;
       branchLabelY = branchTop - 12;
     }
+
+    const defsSvg =
+      '<defs>' +
+        runGrad +
+        branchGrad +
+        '<clipPath id="' + uid + '-clip"><path d="' + bodyPath + '" /></clipPath>' +
+      '</defs>';
 
     const s1Text = "1: " + (side1End || "?") + (side1Size ? (" " + side1Size) : "");
     const s2Text = "2: " + (side2End || "?") + (side2Size ? (" " + side2Size) : "");
@@ -613,8 +710,16 @@ window.QS_MODULES.push({
         defsSvg +
         '<rect x="0" y="0" width="380" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
+        '<ellipse cx="190" cy="' + (botY + 7) + '" rx="96" ry="4" fill="#0f172a" opacity="0.12" />' +
         '<g class="bolt-shape-animate">' +
-          '<path d="' + bodyPath + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
+          '<g clip-path="url(#' + uid + '-clip)">' +
+            runFillSvg +
+            runHighlightSvg +
+            branchFillSvg +
+            branchHighlightSvg +
+            junctionBlendSvg +
+          '</g>' +
+          '<path d="' + bodyPath + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
           '<path d="' + centerPath + '" fill="none" stroke="' + detailColor + '" stroke-width="1" stroke-dasharray="5 3" />' +
           end1Features +
           end2Features +

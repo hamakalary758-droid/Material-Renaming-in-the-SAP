@@ -513,22 +513,15 @@ window.QS_MODULES.push({
     const hasMat = Boolean(material);
     const matPalette = (material && mod.materialColors && mod.materialColors[material]) ? mod.materialColors[material] : null;
     const useShine = Boolean(matPalette && matPalette.shine);
-    const fillColor = matPalette
-      ? (useShine ? "url(#nipple-ss-grad)" : matPalette.fill)
-      : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const fillColor = matPalette ? matPalette.fill : (hasMat ? "#D5DCE3" : "#EEF2F6");
     const shadeColor = matPalette ? matPalette.shade : (hasMat ? "#BCC7D2" : "#E2E8F0");
+    const midColor = useShine ? "#FFFFFF" : fillColor;
     const strokeColor = matPalette ? matPalette.stroke : (hasMat ? "#475569" : "#94A3B8");
     const detailColor = matPalette ? matPalette.detail : (hasMat ? "#64748B" : "#94A3B8");
     const dotColor = matPalette ? matPalette.dot : (hasMat ? "#D5DCE3" : "#EEF2F6");
 
-    const defsSvg = useShine
-      ? '<defs><linearGradient id="nipple-ss-grad" x1="0%" y1="0%" x2="0%" y2="100%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="35%" stop-color="#FFFFFF" />' +
-          '<stop offset="70%" stop-color="#CBD5E1" />' +
-          '<stop offset="100%" stop-color="#F1F5F9" />' +
-        '</linearGradient></defs>'
-      : "";
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "nipple-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
 
     const topText = clean(shortNameText);
     const topLines = topText ? wrapLines(topText, 36) : ["NEW PIPE NIPPLE"];
@@ -574,43 +567,103 @@ window.QS_MODULES.push({
       return '<line x1="' + dx + '" y1="' + (cy - halfH) + '" x2="' + dx + '" y2="' + (cy + halfH) + '" stroke="' + strokeColor + '" stroke-width="1" stroke-dasharray="3 3" />';
     };
 
+    const cylStops =
+      '<stop offset="0%" stop-color="' + shadeColor + '" />' +
+      '<stop offset="28%" stop-color="' + fillColor + '" />' +
+      '<stop offset="48%" stop-color="' + midColor + '" />' +
+      '<stop offset="72%" stop-color="' + fillColor + '" />' +
+      '<stop offset="100%" stop-color="' + shadeColor + '" />';
+
+    const hiW = useShine ? "3.2" : "2.2";
+    const hiOp = useShine ? "0.72" : "0.45";
+
     let xLeft = 96;
     let xRight = 284;
     let rLeft = 24;
     let rRight = 24;
+    let defsSvg = "";
     let bodySvg = "";
+    let shadowRx = 86;
 
     if (drawReducing) {
       xLeft = 86;
       xRight = 294;
       rLeft = 32;
       rRight = 18;
+      shadowRx = 94;
       const xStep1 = 160;
       const xStep2 = 216;
+      const leftTop = cy - rLeft;
+      const leftBot = cy + rLeft;
+      const rightTop = cy - rRight;
+      const rightBot = cy + rRight;
+      const taperMidTop = ((leftTop + rightTop) / 2).toFixed(1);
+      const taperMidBot = ((leftBot + rightBot) / 2).toFixed(1);
+
+      defsSvg =
+        '<defs>' +
+          '<linearGradient id="' + uid + '-big" gradientUnits="userSpaceOnUse" x1="0" y1="' + leftTop + '" x2="0" y2="' + leftBot + '">' +
+            cylStops +
+          '</linearGradient>' +
+          '<linearGradient id="' + uid + '-taper" gradientUnits="userSpaceOnUse" x1="0" y1="' + taperMidTop + '" x2="0" y2="' + taperMidBot + '">' +
+            cylStops +
+          '</linearGradient>' +
+          '<linearGradient id="' + uid + '-small" gradientUnits="userSpaceOnUse" x1="0" y1="' + rightTop + '" x2="0" y2="' + rightBot + '">' +
+            cylStops +
+          '</linearGradient>' +
+        '</defs>';
+
       const bodyPath =
-        "M " + xLeft + " " + (cy - rLeft) +
-        " L " + xStep1 + " " + (cy - rLeft) +
-        " L " + xStep2 + " " + (cy - rRight) +
-        " L " + xRight + " " + (cy - rRight) +
-        " L " + xRight + " " + (cy + rRight) +
-        " L " + xStep2 + " " + (cy + rRight) +
-        " L " + xStep1 + " " + (cy + rLeft) +
-        " L " + xLeft + " " + (cy + rLeft) + " Z";
+        "M " + xLeft + " " + leftTop +
+        " L " + xStep1 + " " + leftTop +
+        " L " + xStep2 + " " + rightTop +
+        " L " + xRight + " " + rightTop +
+        " L " + xRight + " " + rightBot +
+        " L " + xStep2 + " " + rightBot +
+        " L " + xStep1 + " " + leftBot +
+        " L " + xLeft + " " + leftBot + " Z";
+
       bodySvg =
-        '<path d="' + bodyPath + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
-        '<line x1="' + xStep1 + '" y1="' + (cy - rLeft) + '" x2="' + xStep1 + '" y2="' + (cy + rLeft) + '" stroke="' + detailColor + '" stroke-width="0.9" stroke-dasharray="3 3" />' +
-        '<line x1="' + xStep2 + '" y1="' + (cy - rRight) + '" x2="' + xStep2 + '" y2="' + (cy + rRight) + '" stroke="' + detailColor + '" stroke-width="0.9" stroke-dasharray="3 3" />';
+        '<rect x="' + xLeft + '" y="' + leftTop + '" width="' + (xStep1 - xLeft) + '" height="' + (rLeft * 2) + '" fill="url(#' + uid + '-big)" />' +
+        '<polygon points="' + xStep1 + ',' + leftTop + ' ' + xStep2 + ',' + rightTop + ' ' + xStep2 + ',' + rightBot + ' ' + xStep1 + ',' + leftBot + '" fill="url(#' + uid + '-taper)" />' +
+        '<rect x="' + xStep2 + '" y="' + rightTop + '" width="' + (xRight - xStep2) + '" height="' + (rRight * 2) + '" fill="url(#' + uid + '-small)" />' +
+        '<line x1="' + (xLeft + 4) + '" y1="' + (leftTop + 7) + '" x2="' + (xStep1 - 2) + '" y2="' + (leftTop + 7) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '<line x1="' + (xStep1 + 2) + '" y1="' + (leftTop + 7) + '" x2="' + (xStep2 - 2) + '" y2="' + (rightTop + 5) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '<line x1="' + (xStep2 + 2) + '" y1="' + (rightTop + 5) + '" x2="' + (xRight - 4) + '" y2="' + (rightTop + 5) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '<path d="' + bodyPath + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
+        '<line x1="' + xStep1 + '" y1="' + leftTop + '" x2="' + xStep1 + '" y2="' + leftBot + '" stroke="' + detailColor + '" stroke-width="0.9" stroke-dasharray="3 3" />' +
+        '<line x1="' + xStep2 + '" y1="' + rightTop + '" x2="' + xStep2 + '" y2="' + rightBot + '" stroke="' + detailColor + '" stroke-width="0.9" stroke-dasharray="3 3" />';
     } else if (isHex) {
       xLeft = 96;
       xRight = 284;
       rLeft = 24;
       rRight = 24;
+      shadowRx = 86;
       const hexW = 40;
       const hexX = 190 - hexW / 2;
       const hexHalfH = 38;
+      const pipeTop = cy - rLeft;
+      const pipeBot = cy + rLeft;
+      const hexTop = cy - hexHalfH;
+      const hexBot = cy + hexHalfH;
+
+      defsSvg =
+        '<defs>' +
+          '<linearGradient id="' + uid + '-pipe" gradientUnits="userSpaceOnUse" x1="0" y1="' + pipeTop + '" x2="0" y2="' + pipeBot + '">' +
+            cylStops +
+          '</linearGradient>' +
+          '<linearGradient id="' + uid + '-hex" gradientUnits="userSpaceOnUse" x1="0" y1="' + hexTop + '" x2="0" y2="' + hexBot + '">' +
+            cylStops +
+          '</linearGradient>' +
+        '</defs>';
+
       bodySvg =
-        '<rect x="' + xLeft + '" y="' + (cy - rLeft) + '" width="' + (xRight - xLeft) + '" height="' + (rLeft * 2) + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" />' +
-        '<rect x="' + hexX + '" y="' + (cy - hexHalfH) + '" width="' + hexW + '" height="' + (hexHalfH * 2) + '" rx="3" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1.2" />' +
+        '<rect x="' + xLeft + '" y="' + pipeTop + '" width="' + (xRight - xLeft) + '" height="' + (rLeft * 2) + '" fill="url(#' + uid + '-pipe)" />' +
+        '<line x1="' + (xLeft + 4) + '" y1="' + (pipeTop + 6) + '" x2="' + (xRight - 4) + '" y2="' + (pipeTop + 6) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '<rect x="' + xLeft + '" y="' + pipeTop + '" width="' + (xRight - xLeft) + '" height="' + (rLeft * 2) + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" />' +
+        '<rect x="' + hexX + '" y="' + hexTop + '" width="' + hexW + '" height="' + (hexHalfH * 2) + '" rx="3" fill="url(#' + uid + '-hex)" />' +
+        '<line x1="' + (hexX + 4) + '" y1="' + (hexTop + 7) + '" x2="' + (hexX + hexW - 4) + '" y2="' + (hexTop + 7) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '<rect x="' + hexX + '" y="' + hexTop + '" width="' + hexW + '" height="' + (hexHalfH * 2) + '" rx="3" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" />' +
         '<line x1="' + hexX + '" y1="' + (cy - 18) + '" x2="' + (hexX + hexW) + '" y2="' + (cy - 18) + '" stroke="' + strokeColor + '" stroke-width="1" />' +
         '<line x1="' + hexX + '" y1="' + (cy + 18) + '" x2="' + (hexX + hexW) + '" y2="' + (cy + 18) + '" stroke="' + strokeColor + '" stroke-width="1" />';
     } else {
@@ -618,8 +671,21 @@ window.QS_MODULES.push({
       xRight = isBarrelOrExt ? 322 : 278;
       rLeft = 24;
       rRight = 24;
+      shadowRx = isBarrelOrExt ? 116 : 82;
+      const pipeTop = cy - rLeft;
+      const pipeBot = cy + rLeft;
+
+      defsSvg =
+        '<defs>' +
+          '<linearGradient id="' + uid + '-pipe" gradientUnits="userSpaceOnUse" x1="0" y1="' + pipeTop + '" x2="0" y2="' + pipeBot + '">' +
+            cylStops +
+          '</linearGradient>' +
+        '</defs>';
+
       bodySvg =
-        '<rect x="' + xLeft + '" y="' + (cy - rLeft) + '" width="' + (xRight - xLeft) + '" height="' + (rLeft * 2) + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" />';
+        '<rect x="' + xLeft + '" y="' + pipeTop + '" width="' + (xRight - xLeft) + '" height="' + (rLeft * 2) + '" fill="url(#' + uid + '-pipe)" />' +
+        '<line x1="' + (xLeft + 4) + '" y1="' + (pipeTop + 6) + '" x2="' + (xRight - 4) + '" y2="' + (pipeTop + 6) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+        '<rect x="' + xLeft + '" y="' + pipeTop + '" width="' + (xRight - xLeft) + '" height="' + (rLeft * 2) + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" />';
     }
 
     const leftEndDetails = buildEndDetails(leftSide.end, xLeft, 1, rLeft);
@@ -647,6 +713,9 @@ window.QS_MODULES.push({
       '</text>';
 
     const maxR = Math.max(rLeft, rRight, isHex ? 38 : 24);
+    const shadowSvg =
+      '<ellipse cx="190" cy="' + (cy + maxR + 8) + '" rx="' + shadowRx + '" ry="4" fill="#0F172A" opacity="0.12" />';
+
     let lengthDimSvg = "";
     let infoStartY = cy + maxR + 34;
 
@@ -689,6 +758,7 @@ window.QS_MODULES.push({
         defsSvg +
         '<rect x="0" y="0" width="380" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
+        shadowSvg +
         '<g class="bolt-shape-animate">' +
           bodySvg +
           centerLineSvg +

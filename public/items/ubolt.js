@@ -426,22 +426,184 @@ window.QS_MODULES.push({
     const hasMat = Boolean(material);
     const matPalette = (material && mod.materialColors && mod.materialColors[material]) ? mod.materialColors[material] : null;
     const useShine = Boolean(matPalette && matPalette.shine);
-    const fillColor = matPalette
-      ? (useShine ? "url(#ubolt-ss-grad)" : matPalette.fill)
-      : (hasMat ? "#D5DCE3" : "#EEF2F6");
-    const shadeColor = matPalette ? matPalette.shade : (hasMat ? "#BCC7D2" : "#E2E8F0");
+    const fillColor = matPalette ? matPalette.fill : (hasMat ? "#D5DCE3" : "#EEF2F6");
+    const shadeColor = matPalette ? matPalette.shade : (hasMat ? "#BCC7D2" : "#CBD5E1");
+    const midColor = useShine ? "#FFFFFF" : fillColor;
     const strokeColor = matPalette ? matPalette.stroke : (hasMat ? "#475569" : "#94A3B8");
     const detailColor = matPalette ? matPalette.detail : (hasMat ? "#64748B" : "#94A3B8");
     const dotColor = matPalette ? matPalette.dot : (hasMat ? "#D5DCE3" : "#EEF2F6");
 
-    const defsSvg = useShine
-      ? '<defs><linearGradient id="ubolt-ss-grad" x1="0%" y1="0%" x2="100%" y2="0%">' +
-          '<stop offset="0%" stop-color="#F8FAFC" />' +
-          '<stop offset="35%" stop-color="#FFFFFF" />' +
-          '<stop offset="70%" stop-color="#CBD5E1" />' +
-          '<stop offset="100%" stop-color="#F1F5F9" />' +
-        '</linearGradient></defs>'
-      : "";
+    mod._svgUid = (mod._svgUid || 0) + 1;
+    const uid = "ubolt-g" + mod._svgUid + "-" + Math.random().toString(36).slice(2, 6);
+
+    const cylStops =
+      '<stop offset="0%" stop-color="' + shadeColor + '" />' +
+      '<stop offset="28%" stop-color="' + fillColor + '" />' +
+      '<stop offset="48%" stop-color="' + midColor + '" />' +
+      '<stop offset="72%" stop-color="' + fillColor + '" />' +
+      '<stop offset="100%" stop-color="' + shadeColor + '" />';
+
+    const hiW = useShine ? "3.2" : "2.2";
+    const hiOp = useShine ? "0.72" : "0.45";
+
+    const gradDefs = [];
+    const addGrad = function (suffix, x1, y1, x2, y2) {
+      const id = uid + "-" + suffix;
+      gradDefs.push(
+        '<linearGradient id="' + id + '" gradientUnits="userSpaceOnUse" x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '">' +
+          cylStops +
+        '</linearGradient>'
+      );
+      return "url(#" + id + ")";
+    };
+
+    const buildRoundUClipFills = function (archY, outerR, innerR, legBottom, clipId, extraEarLen) {
+      const oL = cx - outerR;
+      const oR = cx + outerR;
+      const iL = cx - innerR;
+      const iR = cx + innerR;
+      const barThick = outerR - innerR;
+      const midHiR = outerR - barThick * 0.28;
+      const c45 = Math.SQRT1_2;
+      const c225 = Math.cos(Math.PI / 8);
+      const s225 = Math.sin(Math.PI / 8);
+      const c675 = Math.cos((3 * Math.PI) / 8);
+      const s675 = Math.sin((3 * Math.PI) / 8);
+
+      const gLegL = addGrad("u-ll", oL, archY, iL, archY);
+      const gLegR = addGrad("u-lr", oR, archY, iR, archY);
+      const gShL = addGrad("u-sl", cx - outerR * c225, archY - outerR * s225, cx - innerR * c225, archY - innerR * s225);
+      const gCrown = addGrad("u-cr", cx, archY - outerR, cx, archY - innerR);
+      const gShR = addGrad("u-sr", cx + outerR * c225, archY - outerR * s225, cx + innerR * c225, archY - innerR * s225);
+
+      const shLXOut = cx - outerR * c45;
+      const shLYOut = archY - outerR * c45;
+      const shLXIn = cx - innerR * c45;
+      const shLYIn = archY - innerR * c45;
+      const shRXOut = cx + outerR * c45;
+      const shRYOut = archY - outerR * c45;
+      const shRXIn = cx + innerR * c45;
+      const shRYIn = archY - innerR * c45;
+
+      /* Subtle angular overlap (~1deg) prevents hairline seams inside clipPath */
+      const shLCrnOutX = cx - outerR * c675;
+      const shLCrnOutY = archY - outerR * s675;
+      const shLCrnInX = cx - innerR * c675;
+      const shLCrnInY = archY - innerR * s675;
+      const shRCrnOutX = cx + outerR * c675;
+      const shRCrnOutY = archY - outerR * s675;
+      const shRCrnInX = cx + innerR * c675;
+      const shRCrnInY = archY - innerR * s675;
+
+      const leftLegRect =
+        '<rect x="' + (oL - 1) + '" y="' + (archY - 0.5) + '" width="' + (barThick + 2) + '" height="' + (legBottom - archY + 1.5) + '" fill="' + gLegL + '" />';
+      const rightLegRect =
+        '<rect x="' + (iR - 1) + '" y="' + (archY - 0.5) + '" width="' + (barThick + 2) + '" height="' + (legBottom - archY + 1.5) + '" fill="' + gLegR + '" />';
+
+      const shLPoly =
+        "M " + (oL - 1) + " " + (archY + 1) +
+        " A " + outerR + " " + outerR + " 0 0 1 " + shLCrnOutX.toFixed(1) + " " + shLCrnOutY.toFixed(1) +
+        " L " + shLCrnInX.toFixed(1) + " " + shLCrnInY.toFixed(1) +
+        " A " + innerR + " " + innerR + " 0 0 0 " + (iL + 1) + " " + (archY + 1) + " Z";
+
+      const crownPoly =
+        "M " + shLXOut.toFixed(1) + " " + shLYOut.toFixed(1) +
+        " A " + outerR + " " + outerR + " 0 0 1 " + shRXOut.toFixed(1) + " " + shRYOut.toFixed(1) +
+        " L " + shRXIn.toFixed(1) + " " + shRYIn.toFixed(1) +
+        " A " + innerR + " " + innerR + " 0 0 0 " + shLXIn.toFixed(1) + " " + shLYIn.toFixed(1) + " Z";
+
+      const shRPoly =
+        "M " + shRCrnOutX.toFixed(1) + " " + shRCrnOutY.toFixed(1) +
+        " A " + outerR + " " + outerR + " 0 0 1 " + (oR + 1) + " " + (archY + 1) +
+        " L " + (iR - 1) + " " + (archY + 1) +
+        " A " + innerR + " " + innerR + " 0 0 0 " + shRCrnInX.toFixed(1) + " " + shRCrnInY.toFixed(1) + " Z";
+
+      let earsSvg = "";
+      let earsHiSvg = "";
+      if (extraEarLen > 0) {
+        const earTop = legBottom - barThick;
+        const gEarL = addGrad("u-el", oL, earTop, oL, legBottom);
+        const gEarR = addGrad("u-er", oR, earTop, oR, legBottom);
+        earsSvg =
+          '<rect x="' + (oL - extraEarLen - 1) + '" y="' + (earTop - 1) + '" width="' + (extraEarLen + barThick * 0.6) + '" height="' + (barThick + 2) + '" fill="' + gEarL + '" />' +
+          '<rect x="' + (oR - barThick * 0.6 + 1) + '" y="' + (earTop - 1) + '" width="' + (extraEarLen + barThick * 0.6) + '" height="' + (barThick + 2) + '" fill="' + gEarR + '" />';
+        const earHiY = earTop + barThick * 0.28;
+        earsHiSvg =
+          '<line x1="' + (oL - extraEarLen + 3) + '" y1="' + earHiY.toFixed(1) + '" x2="' + (oL - 2) + '" y2="' + earHiY.toFixed(1) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<line x1="' + (oR + 2) + '" y1="' + earHiY.toFixed(1) + '" x2="' + (oR + extraEarLen - 3) + '" y2="' + earHiY.toFixed(1) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />';
+      }
+
+      const legStopY = extraEarLen > 0 ? (legBottom - barThick * 0.35) : (legBottom - 3);
+      const archHiPath =
+        "M " + (cx - midHiR).toFixed(1) + " " + legStopY.toFixed(1) +
+        " L " + (cx - midHiR).toFixed(1) + " " + archY +
+        " A " + midHiR.toFixed(1) + " " + midHiR.toFixed(1) + " 0 0 1 " + (cx + midHiR).toFixed(1) + " " + archY +
+        " L " + (cx + midHiR).toFixed(1) + " " + legStopY.toFixed(1);
+
+      return (
+        '<g clip-path="url(#' + clipId + ')">' +
+          earsSvg +
+          leftLegRect +
+          rightLegRect +
+          '<path d="' + shLPoly + '" fill="' + gShL + '" />' +
+          '<path d="' + shRPoly + '" fill="' + gShR + '" />' +
+          '<path d="' + crownPoly + '" fill="' + gCrown + '" />' +
+          '<path d="' + archHiPath + '" fill="none" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          earsHiSvg +
+        '</g>'
+      );
+    };
+
+    const buildSquareUClipFills = function (archY, outerR, innerR, legBottom, clipId, extraEarLen) {
+      const oL = cx - outerR;
+      const oR = cx + outerR;
+      const iL = cx - innerR;
+      const iR = cx + innerR;
+      const barThick = outerR - innerR;
+      const oTop = archY - outerR;
+      const iTop = archY - innerR;
+
+      const gLegL = addGrad("sq-ll", oL, archY, iL, archY);
+      const gLegR = addGrad("sq-lr", oR, archY, iR, archY);
+      const gTop = addGrad("sq-top", cx, oTop, cx, iTop);
+
+      const hiOff = barThick * 0.28;
+      const topPoly =
+        "M " + (oL - 1) + " " + (oTop - 1) +
+        " L " + (oR + 1) + " " + (oTop - 1) +
+        " L " + (iR - 1) + " " + (iTop + 1) +
+        " L " + (iL + 1) + " " + (iTop + 1) + " Z";
+
+      let earsSvg = "";
+      let earsHiSvg = "";
+      if (extraEarLen > 0) {
+        const earTop = legBottom - barThick;
+        const gEarL = addGrad("sq-el", oL, earTop, oL, legBottom);
+        const gEarR = addGrad("sq-er", oR, earTop, oR, legBottom);
+        earsSvg =
+          '<rect x="' + (oL - extraEarLen - 1) + '" y="' + (earTop - 1) + '" width="' + (extraEarLen + barThick * 0.6) + '" height="' + (barThick + 2) + '" fill="' + gEarL + '" />' +
+          '<rect x="' + (oR - barThick * 0.6 + 1) + '" y="' + (earTop - 1) + '" width="' + (extraEarLen + barThick * 0.6) + '" height="' + (barThick + 2) + '" fill="' + gEarR + '" />';
+        const earHiY = earTop + hiOff;
+        earsHiSvg =
+          '<line x1="' + (oL - extraEarLen + 3) + '" y1="' + earHiY.toFixed(1) + '" x2="' + (oL - 2) + '" y2="' + earHiY.toFixed(1) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<line x1="' + (oR + 2) + '" y1="' + earHiY.toFixed(1) + '" x2="' + (oR + extraEarLen - 3) + '" y2="' + earHiY.toFixed(1) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />';
+      }
+
+      const legStartY = oTop + hiOff;
+      const legEndY = extraEarLen > 0 ? (legBottom - hiOff) : (legBottom - 3);
+      return (
+        '<g clip-path="url(#' + clipId + ')">' +
+          earsSvg +
+          '<rect x="' + (oL - 1) + '" y="' + (oTop - 1) + '" width="' + (barThick + 2) + '" height="' + (legBottom - oTop + 2) + '" fill="' + gLegL + '" />' +
+          '<rect x="' + (iR - 1) + '" y="' + (oTop - 1) + '" width="' + (barThick + 2) + '" height="' + (legBottom - oTop + 2) + '" fill="' + gLegR + '" />' +
+          '<path d="' + topPoly + '" fill="' + gTop + '" />' +
+          '<line x1="' + (oL + hiOff).toFixed(1) + '" y1="' + legStartY.toFixed(1) + '" x2="' + (oL + hiOff).toFixed(1) + '" y2="' + legEndY.toFixed(1) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<line x1="' + (oL + hiOff).toFixed(1) + '" y1="' + legStartY.toFixed(1) + '" x2="' + (oR - hiOff).toFixed(1) + '" y2="' + legStartY.toFixed(1) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<line x1="' + (oR - hiOff).toFixed(1) + '" y1="' + legStartY.toFixed(1) + '" x2="' + (oR - hiOff).toFixed(1) + '" y2="' + legEndY.toFixed(1) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          earsHiSvg +
+        '</g>'
+      );
+    };
 
     const topText = clean(shortNameText);
     const topLines = topText ? wrapLines(topText, 36) : ["NEW U BOLT / U CLAMP"];
@@ -463,7 +625,9 @@ window.QS_MODULES.push({
     const missingColor = "#64748B";
     const cx = 190;
 
+    let clipDefSvg = "";
     let shapeSvg = "";
+    let shadowSvg = "";
     let infoStartY = 235 + topShift;
     let specLines = [];
 
@@ -494,6 +658,10 @@ window.QS_MODULES.push({
           esc(pipeDisp || "OD ?") +
         '</text>';
 
+      shadowSvg = '<ellipse cx="190" cy="' + (legBottom + 10) + '" rx="78" ry="4" fill="#0F172A" opacity="0.12" />';
+
+      const clipId = uid + "-clip";
+
       if (clampType === "SQ") {
         const outerLeft = cx - outerR;
         const outerRight = cx + outerR;
@@ -514,9 +682,11 @@ window.QS_MODULES.push({
           " L " + innerLeft + " " + innerTopY +
           " L " + innerLeft + " " + (legBottom - strapW) +
           " L " + (outerLeft - earLen) + " " + (legBottom - strapW) + " Z";
+        clipDefSvg = '<clipPath id="' + clipId + '"><path d="' + path + '" /></clipPath>';
         shapeSvg =
           pipeRefSvg +
-          '<path d="' + path + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
+          buildSquareUClipFills(archY, outerR, innerR, legBottom, clipId, earLen) +
+          '<path d="' + path + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
           '<circle cx="' + (outerLeft - earLen / 2) + '" cy="' + (legBottom - strapW / 2) + '" r="3.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="1" />' +
           '<circle cx="' + (outerRight + earLen / 2) + '" cy="' + (legBottom - strapW / 2) + '" r="3.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="1" />';
       } else {
@@ -537,10 +707,12 @@ window.QS_MODULES.push({
           " A " + innerR + " " + innerR + " 0 0 0 " + innerLeft + " " + archY +
           " L " + innerLeft + " " + (legBottom - strapW) +
           " L " + (outerLeft - earLen) + " " + (legBottom - strapW) + " Z";
+        clipDefSvg = '<clipPath id="' + clipId + '"><path d="' + path + '" /></clipPath>';
 
         let extraSvg = "";
         if (clampType === "LINED") {
           const linerR = innerR - 4;
+          const linerClipId = uid + "-lclip";
           const linerPath =
             "M " + innerLeft + " " + (archY + 18) +
             " L " + innerLeft + " " + archY +
@@ -550,10 +722,27 @@ window.QS_MODULES.push({
             " L " + (cx + linerR) + " " + archY +
             " A " + linerR + " " + linerR + " 0 0 0 " + (cx - linerR) + " " + archY +
             " L " + (cx - linerR) + " " + (archY + 18) + " Z";
-          extraSvg = '<path d="' + linerPath + '" fill="#1F2937" stroke="#0F172A" stroke-width="1" />';
-        } else if (clampType === "HANGER") {
+          clipDefSvg += '<clipPath id="' + linerClipId + '"><path d="' + linerPath + '" /></clipPath>';
+          const gLinCrown = addGrad("lin-cr", cx, archY - innerR, cx, archY - linerR);
+          const gLinL = addGrad("lin-l", innerLeft, archY, cx - linerR, archY);
+          const gLinR = addGrad("lin-r", cx + linerR, archY, innerRight, archY);
+          const linHiR = innerR - 1.4;
           extraSvg =
-            '<rect x="' + (cx - 12) + '" y="' + (archY - outerR - 18) + '" width="24" height="18" rx="2" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1.1" />' +
+            '<g clip-path="url(#' + linerClipId + ')">' +
+              '<rect x="' + (innerLeft - 1) + '" y="' + (archY - 1) + '" width="6" height="20" fill="' + gLinL + '" />' +
+              '<rect x="' + (cx + linerR - 1) + '" y="' + (archY - 1) + '" width="6" height="20" fill="' + gLinR + '" />' +
+              '<rect x="' + (innerLeft - 1) + '" y="' + (archY - innerR - 1) + '" width="' + (innerR * 2 + 2) + '" height="' + (innerR + 2) + '" fill="' + gLinCrown + '" />' +
+              '<path d="M ' + (cx - linHiR) + ' ' + (archY + 15) + ' L ' + (cx - linHiR) + ' ' + archY + ' A ' + linHiR + ' ' + linHiR + ' 0 0 1 ' + (cx + linHiR) + ' ' + archY + ' L ' + (cx + linHiR) + ' ' + (archY + 15) + '" fill="none" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+            '</g>' +
+            '<path d="' + linerPath + '" fill="none" stroke="' + strokeColor + '" stroke-width="1" />';
+        } else if (clampType === "HANGER") {
+          const hx = cx - 12;
+          const hy = archY - outerR - 18;
+          const gHng = addGrad("cl-hng", hx, hy, hx, hy + 18);
+          extraSvg =
+            '<rect x="' + hx + '" y="' + hy + '" width="24" height="18" rx="2" fill="' + gHng + '" />' +
+            '<line x1="' + (hx + 3) + '" y1="' + (hy + 4) + '" x2="' + (hx + 21) + '" y2="' + (hy + 4) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+            '<rect x="' + hx + '" y="' + hy + '" width="24" height="18" rx="2" fill="none" stroke="' + strokeColor + '" stroke-width="1.1" />' +
             '<circle cx="' + cx + '" cy="' + (archY - outerR - 9) + '" r="3.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="1" />';
         } else if (clampType === "FLAT") {
           extraSvg =
@@ -563,7 +752,8 @@ window.QS_MODULES.push({
 
         shapeSvg =
           pipeRefSvg +
-          '<path d="' + path + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
+          buildRoundUClipFills(archY, outerR, innerR, legBottom, clipId, earLen) +
+          '<path d="' + path + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
           extraSvg +
           '<circle cx="' + (outerLeft - earLen / 2) + '" cy="' + (legBottom - strapW / 2) + '" r="3.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="1" />' +
           '<circle cx="' + (outerRight + earLen / 2) + '" cy="' + (legBottom - strapW / 2) + '" r="3.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="1" />';
@@ -598,7 +788,11 @@ window.QS_MODULES.push({
           esc(pipeDisp) +
         '</text>';
 
+      shadowSvg = '<ellipse cx="190" cy="' + (legBottom + 10) + '" rx="56" ry="4" fill="#0F172A" opacity="0.12" />';
+
+      const clipId = uid + "-clip";
       let bodyPath = "";
+      let bodyFillSvg = "";
       if (boltType === "SQ") {
         const oL = cx - outerR;
         const oR = cx + outerR;
@@ -615,6 +809,8 @@ window.QS_MODULES.push({
           " L " + iR + " " + iTop +
           " L " + iL + " " + iTop +
           " L " + iL + " " + legBottom + " Z";
+        clipDefSvg = '<clipPath id="' + clipId + '"><path d="' + bodyPath + '" /></clipPath>';
+        bodyFillSvg = buildSquareUClipFills(archY, outerR, innerR, legBottom, clipId, 0);
       } else {
         const oL = cx - outerR;
         const oR = cx + outerR;
@@ -629,6 +825,8 @@ window.QS_MODULES.push({
           " L " + iR + " " + archY +
           " A " + innerR + " " + innerR + " 0 0 0 " + iL + " " + archY +
           " L " + iL + " " + legBottom + " Z";
+        clipDefSvg = '<clipPath id="' + clipId + '"><path d="' + bodyPath + '" /></clipPath>';
+        bodyFillSvg = buildRoundUClipFills(archY, outerR, innerR, legBottom, clipId, 0);
       }
 
       /* Thread lines on left & right legs */
@@ -645,12 +843,28 @@ window.QS_MODULES.push({
       if (boltType === "HANGER") {
         const barY = archY + 34;
         const barW = 136;
+        const barX = cx - barW / 2;
+        const nutW = barThick + 6;
+        const nutL = cx - outerR - 3;
+        const nutR = cx + innerR - 3;
+        const nutY = barY + 11;
+
+        const gBar = addGrad("hng-bar", barX, barY, barX, barY + 11);
+        const gNutL = addGrad("hng-nl", nutL, nutY, nutL + nutW, nutY);
+        const gNutR = addGrad("hng-nr", nutR, nutY, nutR + nutW, nutY);
+
         hangerSvg =
-          '<rect x="' + (cx - barW / 2) + '" y="' + barY + '" width="' + barW + '" height="11" rx="2" fill="' + shadeColor + '" stroke="' + strokeColor + '" stroke-width="1.1" />' +
-          '<circle cx="' + (cx - barW / 2 + 10) + '" cy="' + (barY + 5.5) + '" r="2.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="0.9" />' +
-          '<circle cx="' + (cx + barW / 2 - 10) + '" cy="' + (barY + 5.5) + '" r="2.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="0.9" />' +
-          '<rect x="' + (cx - outerR - 3) + '" y="' + (barY + 11) + '" width="' + (barThick + 6) + '" height="7" rx="1" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1" />' +
-          '<rect x="' + (cx + innerR - 3) + '" y="' + (barY + 11) + '" width="' + (barThick + 6) + '" height="7" rx="1" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1" />';
+          '<rect x="' + barX + '" y="' + barY + '" width="' + barW + '" height="11" rx="2" fill="' + gBar + '" />' +
+          '<line x1="' + (barX + 4) + '" y1="' + (barY + 3) + '" x2="' + (barX + barW - 4) + '" y2="' + (barY + 3) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<rect x="' + barX + '" y="' + barY + '" width="' + barW + '" height="11" rx="2" fill="none" stroke="' + strokeColor + '" stroke-width="1.1" />' +
+          '<circle cx="' + (barX + 10) + '" cy="' + (barY + 5.5) + '" r="2.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="0.9" />' +
+          '<circle cx="' + (barX + barW - 10) + '" cy="' + (barY + 5.5) + '" r="2.5" fill="#FFFFFF" stroke="' + strokeColor + '" stroke-width="0.9" />' +
+          '<rect x="' + nutL + '" y="' + nutY + '" width="' + nutW + '" height="7" rx="1" fill="' + gNutL + '" />' +
+          '<line x1="' + (nutL + 2) + '" y1="' + (nutY + 2) + '" x2="' + (nutL + nutW - 2) + '" y2="' + (nutY + 2) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<rect x="' + nutL + '" y="' + nutY + '" width="' + nutW + '" height="7" rx="1" fill="none" stroke="' + strokeColor + '" stroke-width="1" />' +
+          '<rect x="' + nutR + '" y="' + nutY + '" width="' + nutW + '" height="7" rx="1" fill="' + gNutR + '" />' +
+          '<line x1="' + (nutR + 2) + '" y1="' + (nutY + 2) + '" x2="' + (nutR + nutW - 2) + '" y2="' + (nutY + 2) + '" stroke="#FFFFFF" stroke-width="' + hiW + '" stroke-linecap="round" opacity="' + hiOp + '" />' +
+          '<rect x="' + nutR + '" y="' + nutY + '" width="' + nutW + '" height="7" rx="1" fill="none" stroke="' + strokeColor + '" stroke-width="1" />';
       }
 
       /* Leg length dimension on the right */
@@ -667,7 +881,8 @@ window.QS_MODULES.push({
 
       shapeSvg =
         pipeRefSvg +
-        '<path d="' + bodyPath + '" fill="' + fillColor + '" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
+        bodyFillSvg +
+        '<path d="' + bodyPath + '" fill="none" stroke="' + strokeColor + '" stroke-width="1.2" stroke-linejoin="round" />' +
         thdLines.join("") +
         hangerSvg +
         dimSvg;
@@ -681,6 +896,8 @@ window.QS_MODULES.push({
       if (finish) specs.push("Finish: " + finish);
       specLines = wrapLines(specs.join("  |  "), 46);
     }
+
+    const defsSvg = '<defs>' + gradDefs.join("") + clipDefSvg + '</defs>';
 
     const matLabel = material ? ("Material: " + material) : "Material: ?";
     const matCol = material ? reqColor : missingColor;
@@ -700,6 +917,7 @@ window.QS_MODULES.push({
         defsSvg +
         '<rect x="0" y="0" width="380" height="' + totalHeight + '" fill="#FFFFFF" />' +
         topSvg +
+        shadowSvg +
         '<g class="bolt-shape-animate">' +
           shapeSvg +
         '</g>' +
