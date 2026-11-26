@@ -49,12 +49,61 @@ self.addEventListener("activate", function (event) {
   );
 });
 
+function isNetworkFirstRequest(req, url) {
+  if (req.mode === "navigate") return true;
+
+  const scopePath = new URL(self.registration.scope).pathname;
+  const pathname = url.pathname;
+
+  if (
+    pathname === scopePath ||
+    pathname === scopePath + "index.html" ||
+    pathname === "/" ||
+    pathname.endsWith("/index.html")
+  ) {
+    return true;
+  }
+
+  if (pathname.includes("/items/")) {
+    return true;
+  }
+
+  return false;
+}
+
 self.addEventListener("fetch", function (event) {
   const req = event.request;
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+
+  if (isNetworkFirstRequest(req, url)) {
+    event.respondWith(
+      fetch(req).then(function (response) {
+        if (response && response.status === 200) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(function (cache) {
+            cache.put(req, copy);
+          });
+        }
+        return response;
+      }).catch(function () {
+        return caches.match(req).then(function (cached) {
+          if (cached) {
+            return cached;
+          }
+          if (req.mode === "navigate") {
+            return caches.match("index.html").then(function (fallback) {
+              return fallback || caches.match("./");
+            });
+          }
+          return Response.error();
+        });
+      })
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(req).then(function (cached) {
@@ -70,12 +119,7 @@ self.addEventListener("fetch", function (event) {
         }
         return response;
       }).catch(function () {
-        if (req.mode === "navigate") {
-          return caches.match("index.html").then(function (fallback) {
-            return fallback || caches.match("./");
-          });
-        }
-        return undefined;
+        return Response.error();
       });
     })
   );
